@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"internal/scanner"
 	"internal/util/log"
 	"os"
 )
@@ -32,15 +33,20 @@ func runLoop() {
 }
 
 func run(source []byte) {
-	log.DebugIfEnabled("Run source", func() []log.Field {
-		sourceStr := ""
+	sourceStr := string(source)
+
+	log.InfoIfEnabled("Run source", func() []log.Field {
+		_sourceStr := sourceStr
 
 		if len(source) > 100 {
-			sourceStr = string(source[:100]) + "...(more " + fmt.Sprint(len(source)) + " bytes)"
-		} else {
-			sourceStr = string(source)
+			_sourceStr = string(source[:100]) + "...(more " + fmt.Sprint(len(source)) + " bytes)"
 		}
 
-		return []log.Field{log.S("source", sourceStr)}
+		return []log.Field{log.S("source", _sourceStr)}
 	})
+
+	scanner := scanner.NewScanner(sourceStr)
+	tokens, errs := scanner.ScanTokens()
+
+	log.Debug("Scan complete", log.A("tokens", tokens), log.A("errors", errs))
 }

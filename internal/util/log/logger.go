@@ -67,6 +67,13 @@ func DebugIfEnabled(msg string, fieldsFunc func() []Field) {
 	}
 }
 
+func InfoIfEnabled(msg string, fieldsFunc func() []Field) {
+	if logger.Core().Enabled(zap.InfoLevel) {
+		fields := fieldsFunc()
+		logger.Debug(msg, fields...)
+	}
+}
+
 func Info(msg string, fields ...Field) {
 	logger.Info(msg, fields...)
 }
