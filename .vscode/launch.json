@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "cmd/main",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "cmd/main with file",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main",
+      "args": [
+        "${input:path}"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "path",
+      "type": "promptString",
+      "description": "file path",
+      "default": ""
+    }
+  ]
+}
