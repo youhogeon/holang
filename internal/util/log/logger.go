@@ -12,6 +12,8 @@ import (
 
 var logger *zap.Logger
 
+type Field = zap.Field
+
 func init() {
 	f, err := os.OpenFile("log.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -48,42 +50,42 @@ func init() {
 	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 }
 
-var fieldsStore, _ = lru.New[int64, []zap.Field](1024 * 8)
+var fieldsStore, _ = lru.New[int64, []Field](1024 * 8)
 
-func With(uid int64, fields ...zap.Field) {
+func With(uid int64, fields ...Field) {
 	fieldsStore.Add(uid, fields)
 }
 
-func Debug(msg string, fields ...zap.Field) {
+func Debug(msg string, fields ...Field) {
 	logger.Debug(msg, fields...)
 }
 
-func DebugIfEnabled(msg string, fieldsFunc func() []zap.Field) {
+func DebugIfEnabled(msg string, fieldsFunc func() []Field) {
 	if logger.Core().Enabled(zap.DebugLevel) {
 		fields := fieldsFunc()
 		logger.Debug(msg, fields...)
 	}
 }
 
-func Info(msg string, fields ...zap.Field) {
+func Info(msg string, fields ...Field) {
 	logger.Info(msg, fields...)
 }
 
-func Warn(msg string, fields ...zap.Field) {
+func Warn(msg string, fields ...Field) {
 	logger.Warn(msg, fields...)
 }
 
-func Error(msg string, fields ...zap.Field) {
+func Error(msg string, fields ...Field) {
 	logger.Error(msg, fields...)
 }
 
-func Fatal(msg string, fields ...zap.Field) {
+func Fatal(msg string, fields ...Field) {
 	logger.Fatal(msg, fields...)
 
 	panic(msg)
 }
 
-func DebugWith(uid int64, msg string, fields ...zap.Field) {
+func DebugWith(uid int64, msg string, fields ...Field) {
 	if _fields, ok := fieldsStore.Get(uid); ok {
 		logger.Debug(msg, append(fields, _fields...)...)
 	} else {
@@ -91,7 +93,7 @@ func DebugWith(uid int64, msg string, fields ...zap.Field) {
 	}
 }
 
-func InfoWith(uid int64, msg string, fields ...zap.Field) {
+func InfoWith(uid int64, msg string, fields ...Field) {
 	if _fields, ok := fieldsStore.Get(uid); ok {
 		logger.Info(msg, append(fields, _fields...)...)
 	} else {
@@ -99,7 +101,7 @@ func InfoWith(uid int64, msg string, fields ...zap.Field) {
 	}
 }
 
-func WarnWith(uid int64, msg string, fields ...zap.Field) {
+func WarnWith(uid int64, msg string, fields ...Field) {
 	if _fields, ok := fieldsStore.Get(uid); ok {
 		logger.Warn(msg, append(fields, _fields...)...)
 	} else {
@@ -107,7 +109,7 @@ func WarnWith(uid int64, msg string, fields ...zap.Field) {
 	}
 }
 
-func ErrorWith(uid int64, msg string, fields ...zap.Field) {
+func ErrorWith(uid int64, msg string, fields ...Field) {
 	if _fields, ok := fieldsStore.Get(uid); ok {
 		logger.Error(msg, append(fields, _fields...)...)
 	} else {
@@ -119,42 +121,42 @@ func Sync() error {
 	return logger.Sync()
 }
 
-func Common(botId string, uid int64, code string) []zap.Field {
-	return []zap.Field{
+func Common(botId string, uid int64, code string) []Field {
+	return []Field{
 		S("botId", botId),
 		I("uid", uid),
 		S("code", code),
 	}
 }
 
-func S(key string, value string) zap.Field {
+func S(key string, value string) Field {
 	return zap.String(key, value)
 }
 
-func I(key string, value int64) zap.Field {
+func I(key string, value int64) Field {
 	return zap.Int64(key, value)
 }
 
-func Int(key string, value int) zap.Field {
+func Int(key string, value int) Field {
 	return zap.Int(key, value)
 }
 
-func E(err error) zap.Field {
+func E(err error) Field {
 	return zap.Error(err)
 }
 
-func A(key string, value any) zap.Field {
+func A(key string, value any) Field {
 	return zap.Any(key, value)
 }
 
-func F(key string, value float64) zap.Field {
+func F(key string, value float64) Field {
 	return zap.Any(key, value)
 }
 
-func D(key string, value time.Duration) zap.Field {
+func D(key string, value time.Duration) Field {
 	return zap.Duration(key, value)
 }
 
-func T(key string, value time.Time) zap.Field {
+func T(key string, value time.Time) Field {
 	return zap.Time(key, value)
 }
