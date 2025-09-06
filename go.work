@@ -3,6 +3,7 @@ go 1.24.0
 use (
 	./cmd/main
 	./internal/ast
+	./internal/interpreter
 	./internal/parser
 	./internal/scanner
 	./internal/util
