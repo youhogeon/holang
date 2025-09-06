@@ -17,6 +17,8 @@ const (
 	SEMICOLON
 	SLASH
 	STAR
+	QUESTION
+	COLON
 
 	// One or two character tokens.
 	BANG
@@ -71,6 +73,8 @@ var tokenNames = map[TokenType]string{
 	SEMICOLON:   "SEMICOLON",
 	SLASH:       "SLASH",
 	//10
+	QUESTION:      "QUESTION",
+	COLON:         "COLON",
 	STAR:          "STAR",
 	BANG:          "BANG",
 	BANG_EQUAL:    "BANG_EQUAL",
@@ -79,9 +83,9 @@ var tokenNames = map[TokenType]string{
 	GREATER:       "GREATER",
 	GREATER_EQUAL: "GREATER_EQUAL",
 	LESS:          "LESS",
-	LESS_EQUAL:    "LESS_EQUAL",
-	IDENTIFIER:    "IDENTIFIER",
 	//20
+	LESS_EQUAL:  "LESS_EQUAL",
+	IDENTIFIER:  "IDENTIFIER",
 	STRING:      "STRING",
 	NUMBER_INT:  "NUMBER_INT",
 	NUMBER_REAL: "NUMBER_REAL",
@@ -90,20 +94,20 @@ var tokenNames = map[TokenType]string{
 	ELSE:        "ELSE",
 	FALSE:       "FALSE",
 	FUN:         "FUN",
-	FOR:         "FOR",
-	IF:          "IF",
 	//30
-	NIL:     "NIL",
-	OR:      "OR",
-	PRINT:   "PRINT",
-	RETURN:  "RETURN",
-	SUPER:   "SUPER",
-	THIS:    "THIS",
-	TRUE:    "TRUE",
-	VAR:     "VAR",
-	WHILE:   "WHILE",
-	COMMENT: "COMMENT",
+	FOR:    "FOR",
+	IF:     "IF",
+	NIL:    "NIL",
+	OR:     "OR",
+	PRINT:  "PRINT",
+	RETURN: "RETURN",
+	SUPER:  "SUPER",
+	THIS:   "THIS",
+	TRUE:   "TRUE",
+	VAR:    "VAR",
 	//40
+	WHILE:         "WHILE",
+	COMMENT:       "COMMENT",
 	MULTI_COMMENT: "MULTI_COMMENT",
 	EOF:           "EOF",
 }

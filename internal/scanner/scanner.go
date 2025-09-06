@@ -61,8 +61,12 @@ func (s *Scanner) scanToken() error {
 		s.addToken(MINUS, nil)
 	case '+':
 		s.addToken(PLUS, nil)
+	case ':':
+		s.addToken(COLON, nil)
 	case ';':
 		s.addToken(SEMICOLON, nil)
+	case '?':
+		s.addToken(QUESTION, nil)
 	case '/':
 		if s.advanceIfMatch('/') {
 			for s.peek() != '\n' && !s.isAtEnd() {

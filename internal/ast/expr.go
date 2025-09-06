@@ -18,6 +18,7 @@ type ExprVisitor interface {
 	VisitSetExpr(expr *Set) any
 	VisitSuperExpr(expr *Super) any
 	VisitThisExpr(expr *This) any
+	VisitTernaryExpr(expr *Ternary) any
 	VisitUnaryExpr(expr *Unary) any
 	VisitVariableExpr(expr *Variable) any
 }
@@ -151,6 +152,22 @@ func (t *This) Accept(visitor ExprVisitor) any {
 
 func (t *This) AcceptString(visitor ExprVisitor) string {
 	return t.Accept(visitor).(string)
+}
+
+type Ternary struct {
+	Left           Expr
+	FirstOperator  scanner.Token
+	Mid            Expr
+	SecondOperator scanner.Token
+	Right          Expr
+}
+
+func (u *Ternary) Accept(visitor ExprVisitor) any {
+	return visitor.VisitTernaryExpr(u)
+}
+
+func (u *Ternary) AcceptString(visitor ExprVisitor) string {
+	return u.Accept(visitor).(string)
 }
 
 type Unary struct {

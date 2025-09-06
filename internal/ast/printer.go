@@ -27,7 +27,7 @@ func (p *AstPrinter) PrintStmt(stmt_arg Stmt) string {
 // -----------------------------------------------------------------------------
 
 func (p *AstPrinter) VisitAssignExpr(e *Assign) any {
-	return p.parenthesize2("=", e.Name.Lexeme, e.Value)
+	return p.parenthesize("=", e.Name.Lexeme, e.Value)
 }
 
 func (p *AstPrinter) VisitBinaryExpr(e *Binary) any {
@@ -35,11 +35,11 @@ func (p *AstPrinter) VisitBinaryExpr(e *Binary) any {
 }
 
 func (p *AstPrinter) VisitCallExpr(e *Call) any {
-	return p.parenthesize2("call", e.Callee, e.Arguments)
+	return p.parenthesize("call", e.Callee, e.Arguments)
 }
 
 func (p *AstPrinter) VisitGetExpr(e *Get) any {
-	return p.parenthesize2(".", e.Object, e.Name.Lexeme)
+	return p.parenthesize(".", e.Object, e.Name.Lexeme)
 }
 
 func (p *AstPrinter) VisitGroupingExpr(e *Grouping) any {
@@ -58,15 +58,19 @@ func (p *AstPrinter) VisitLogicalExpr(e *Logical) any {
 }
 
 func (p *AstPrinter) VisitSetExpr(e *Set) any {
-	return p.parenthesize2("=", e.Object, e.Name.Lexeme, e.Value)
+	return p.parenthesize("=", e.Object, e.Name.Lexeme, e.Value)
 }
 
 func (p *AstPrinter) VisitSuperExpr(e *Super) any {
-	return p.parenthesize2("super", e.Method)
+	return p.parenthesize("super", e.Method)
 }
 
 func (p *AstPrinter) VisitThisExpr(e *This) any {
 	return "this"
+}
+
+func (p *AstPrinter) VisitTernaryExpr(e *Ternary) any {
+	return p.parenthesize(e.FirstOperator.Lexeme+e.SecondOperator.Lexeme, e.Left, e.Mid, e.Right)
 }
 
 func (p *AstPrinter) VisitUnaryExpr(e *Unary) any {
@@ -138,9 +142,9 @@ func (p *AstPrinter) VisitFunctionStmt(s *Function) any {
 
 func (p *AstPrinter) VisitIfStmt(s *If) any {
 	if s.ElseBranch == nil {
-		return p.parenthesize2("if", s.Condition, s.ThenBranch)
+		return p.parenthesize("if", s.Condition, s.ThenBranch)
 	}
-	return p.parenthesize2("if-else", s.Condition, s.ThenBranch, s.ElseBranch)
+	return p.parenthesize("if-else", s.Condition, s.ThenBranch, s.ElseBranch)
 }
 
 func (p *AstPrinter) VisitPrintStmt(s *Print) any {
@@ -156,30 +160,19 @@ func (p *AstPrinter) VisitReturnStmt(s *Return) any {
 
 func (p *AstPrinter) VisitVarStmt(s *Var) any {
 	if s.Initializer == nil {
-		return p.parenthesize2("var", s.Name.Lexeme)
+		return p.parenthesize("var", s.Name.Lexeme)
 	}
-	return p.parenthesize2("var", s.Name.Lexeme, "=", s.Initializer)
+	return p.parenthesize("var", s.Name.Lexeme, "=", s.Initializer)
 }
 
 func (p *AstPrinter) VisitWhileStmt(s *While) any {
-	return p.parenthesize2("while", s.Condition, s.Body)
+	return p.parenthesize("while", s.Condition, s.Body)
 }
 
 // -----------------------------------------------------------------------------
 // print-utilities
 
-func (p *AstPrinter) parenthesize(name string, exprs ...Expr) string {
-	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("(%s", name))
-	for _, exprArg := range exprs {
-		builder.WriteString(" ")
-		builder.WriteString(exprArg.AcceptString(p))
-	}
-	builder.WriteString(")")
-	return builder.String()
-}
-
-func (p *AstPrinter) parenthesize2(name string, parts ...interface{}) string {
+func (p *AstPrinter) parenthesize(name string, parts ...any) string {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("(%s", name))
 	p.transform(&builder, parts...)
@@ -187,7 +180,7 @@ func (p *AstPrinter) parenthesize2(name string, parts ...interface{}) string {
 	return builder.String()
 }
 
-func (p *AstPrinter) transform(builder *strings.Builder, parts ...interface{}) {
+func (p *AstPrinter) transform(builder *strings.Builder, parts ...any) {
 	for _, part := range parts {
 		builder.WriteString(" ")
 		switch v := part.(type) {

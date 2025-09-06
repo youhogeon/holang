@@ -4,12 +4,24 @@ import (
 	"errors"
 	"internal/ast"
 	"internal/scanner"
+	"slices"
 )
 
 type Parser struct {
 	tokens  []scanner.Token
 	current int
 }
+
+// expression     → ternary ;
+// ternary        → equality ("?" expression ":" expression)? ;
+// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+// term           → factor ( ( "-" | "+" ) factor )* ;
+// factor         → unary ( ( "/" | "*" ) unary )* ;
+// unary          → ( "!" | "-" ) unary
+//                | primary ;
+// primary        → NUMBER | STRING | "true" | "false" | "nil"
+//                | "(" expression ")" ;
 
 func NewParser(tokens []scanner.Token) *Parser {
 	return &Parser{
@@ -22,7 +34,46 @@ func (p *Parser) Parse() (ast.Expr, error) {
 }
 
 func (p *Parser) expression() (ast.Expr, error) {
-	return p.equality()
+	return p.ternary()
+}
+
+func (p *Parser) ternary() (ast.Expr, error) {
+	expr, err := p.equality()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if p.match(scanner.QUESTION) {
+		firstOp := p.previous()
+		mid, err := p.expression()
+
+		if err != nil {
+			return nil, err
+		}
+
+		secondOp, err := p.consumeOrError(scanner.COLON, "Expect ':' after expression.")
+
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := p.expression()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.Ternary{
+			Left:           expr,
+			FirstOperator:  *firstOp,
+			Mid:            mid,
+			SecondOperator: *secondOp,
+			Right:          right,
+		}, nil
+	}
+
+	return expr, nil
 }
 
 func (p *Parser) equality() (ast.Expr, error) {
@@ -167,7 +218,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 			return nil, err
 		}
 
-		_, err = p.consume(scanner.RIGHT_PAREN, "Expect ')' after expression.")
+		_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after expression.")
 
 		if err != nil {
 			return nil, err
@@ -179,12 +230,32 @@ func (p *Parser) primary() (ast.Expr, error) {
 	return nil, errors.New("expect expression")
 }
 
-func (p *Parser) match(types ...scanner.TokenType) bool {
-	for _, t := range types {
-		if p.check(t) {
-			p.advance()
-			return true
+func (p *Parser) synchronize() {
+	p.advance()
+
+	for !p.isAtEnd() {
+		if p.previous().TokenType == scanner.SEMICOLON {
+			return
 		}
+
+		switch p.peek().TokenType {
+		case scanner.CLASS, scanner.FUN, scanner.VAR, scanner.FOR,
+			scanner.IF, scanner.WHILE, scanner.PRINT, scanner.RETURN:
+			return
+		}
+
+		p.advance()
+	}
+}
+
+// ----------------------------------------------------------------
+// helpers
+// ----------------------------------------------------------------
+
+func (p *Parser) match(types ...scanner.TokenType) bool {
+	if slices.ContainsFunc(types, p.check) {
+		p.advance()
+		return true
 	}
 
 	return false
@@ -218,7 +289,7 @@ func (p *Parser) previous() *scanner.Token {
 	return &p.tokens[p.current-1]
 }
 
-func (p *Parser) consume(t scanner.TokenType, message string) (*scanner.Token, error) {
+func (p *Parser) consumeOrError(t scanner.TokenType, message string) (*scanner.Token, error) {
 	if p.check(t) {
 		return p.advance(), nil
 	}
