@@ -11,6 +11,14 @@ type Parser struct {
 	current int
 }
 
+// program        → statement* EOF ;
+//
+// statement      → exprStmt
+//                | printStmt ;
+//
+// exprStmt       → expression ";" ;
+// printStmt      → "print" expression ";" ;
+//
 // expression     → ternary ;
 // ternary        → equality ("?" expression ":" expression)? ;
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -28,8 +36,69 @@ func NewParser(tokens []scanner.Token) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (ast.Expr, error) {
-	return p.expression()
+func (p *Parser) Parse() ([]ast.Stmt, []error) {
+	statements := make([]ast.Stmt, 0)
+	errors := make([]error, 0)
+
+	for !p.isAtEnd() {
+		stmt, err := p.parseStatements()
+
+		if err != nil {
+			p.synchronize()
+
+			errors = append(errors, err)
+
+			continue
+		}
+
+		statements = append(statements, stmt)
+	}
+
+	return statements, errors
+}
+
+func (p *Parser) parseStatements() (ast.Stmt, error) {
+	if p.match(scanner.PRINT) {
+		return p.printStatement()
+	}
+
+	return p.exprStatement()
+}
+
+func (p *Parser) exprStatement() (ast.Stmt, error) {
+	expr, err := p.expression()
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Expression{
+		Expression: expr,
+	}, nil
+}
+
+func (p *Parser) printStatement() (ast.Stmt, error) {
+	expr, err := p.expression()
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Print{
+		Expression: expr,
+	}, nil
 }
 
 func (p *Parser) expression() (ast.Expr, error) {

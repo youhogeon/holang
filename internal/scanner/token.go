@@ -130,6 +130,8 @@ var keywords = map[string]TokenType{
 	"var":     VAR,
 	"while":   WHILE,
 	"comment": COMMENT,
+	"T":       TRUE,
+	"F":       FALSE,
 }
 
 func (t *TokenType) String() string {

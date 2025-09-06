@@ -14,7 +14,7 @@ func NewParseErrorWithLog(message string, token *scanner.Token) *ParseError {
 		Message: message,
 	}
 
-	log.Error("Parse error", log.E(err))
+	log.Error("Parse error", log.E(err), log.A("token", token))
 
 	return err
 }

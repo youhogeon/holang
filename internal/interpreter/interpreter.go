@@ -18,14 +18,32 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(expr ast.Expr) (result any, err error) {
+func (i *Interpreter) Interpret(program []ast.Stmt) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = NewRuntimeErrorWithLog(fmt.Sprint(r))
 		}
 	}()
 
-	return i.evaluate(expr)
+	for _, stmt := range program {
+		err = i.execute(stmt)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *Interpreter) execute(stmt ast.Stmt) error {
+	result := stmt.Accept(i)
+
+	if result == nil {
+		return nil
+	}
+
+	return result.(error)
 }
 
 func (i *Interpreter) evaluate(expr ast.Expr) (any, error) {
@@ -191,6 +209,52 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
 	return &valueAndError{nil, nil}
+}
+
+func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) any {
+	return nil
+}
+
+func (i *Interpreter) VisitClassStmt(stmt *ast.Class) any {
+	return nil
+}
+
+func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) any {
+	_, err := i.evaluate(stmt.Expression)
+
+	return err
+}
+
+func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) any {
+	return nil
+}
+
+func (i *Interpreter) VisitIfStmt(stmt *ast.If) any {
+	return nil
+}
+
+func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) any {
+	value, err := i.evaluate(stmt.Expression)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(value)
+
+	return nil
+}
+
+func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) any {
+	return nil
+}
+
+func (i *Interpreter) VisitVarStmt(stmt *ast.Var) any {
+	return nil
+}
+
+func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
+	return nil
 }
 
 func isTruthy(value any) bool {

@@ -60,24 +60,16 @@ func run(source []byte) {
 	p := parser.NewParser(tokens)
 	printer := ast.NewAstPrinter()
 
-	root, err := p.Parse()
+	statements, errs := p.Parse()
 
-	log.Debug("Parse complete", log.A("ast", root), log.E(err))
+	log.Debug("Parse complete", log.A("ast", statements), log.A("errors", errs))
 
-	if root == nil {
-		return
+	for _, stmt := range statements {
+		log.Debug("AST", log.S("astStr", printer.PrintStmt(stmt)))
 	}
-
-	log.Debug("AST", log.S("astStr", printer.PrintExpr(root)))
 
 	interpreter := interpreter.NewInterpreter()
-	result, err := interpreter.Interpret(root)
+	err := interpreter.Interpret(statements)
 
-	log.Debug("Interpret complete", log.A("result", result), log.E(err))
-
-	if err != nil {
-		return
-	}
-
-	log.Info("Run complete", log.A("result", result))
+	log.Debug("Interpret complete", log.E(err))
 }
