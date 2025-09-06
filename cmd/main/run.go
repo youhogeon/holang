@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"internal/ast"
+	"internal/interpreter"
 	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
@@ -63,5 +64,20 @@ func run(source []byte) {
 
 	log.Debug("Parse complete", log.A("ast", root), log.E(err))
 
+	if root == nil {
+		return
+	}
+
 	log.Debug("AST", log.S("astStr", printer.PrintExpr(root)))
+
+	interpreter := interpreter.NewInterpreter()
+	result, err := interpreter.Interpret(root)
+
+	log.Debug("Interpret complete", log.A("result", result), log.E(err))
+
+	if err != nil {
+		return
+	}
+
+	log.Info("Run complete", log.A("result", result))
 }
