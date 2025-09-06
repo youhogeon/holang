@@ -81,7 +81,8 @@ func (s *Scanner) scanToken() error {
 				}
 
 				if s.isAtEnd() {
-					return log.LangError("Unterminated multi-line comment", "", s.line)
+					err := NewScanErrorWithLog("Unterminated multi-line comment", s.line, "")
+					return err
 				}
 
 				if s.advanceIfMatch('*', '/') {
@@ -131,7 +132,8 @@ func (s *Scanner) scanToken() error {
 		}
 
 		if s.isAtEnd() {
-			return log.LangError("Unterminated string", "", s.line)
+			err := NewScanErrorWithLog("Unterminated string", s.line, "")
+			return err
 		}
 
 		s.advance()
@@ -165,7 +167,8 @@ func (s *Scanner) scanToken() error {
 			}
 
 			if dotCount > 1 {
-				return log.LangError("Invalid number format: multiple decimal points", "", s.line)
+				err := NewScanErrorWithLog("Invalid number format: multiple decimal points", s.line, "")
+				return err
 			}
 
 			if dotCount == 0 {
@@ -191,7 +194,8 @@ func (s *Scanner) scanToken() error {
 			return nil
 		}
 
-		return log.LangError("Unexpected character: "+string(c), "", s.line)
+		err := NewScanErrorWithLog("Unexpected character: "+string(c), s.line, "")
+		return err
 	}
 
 	return nil
@@ -219,7 +223,8 @@ func (s *Scanner) addIntToken() error {
 	lexeme := string(s.source[s.start:s.current])
 	intVal, err := strconv.ParseInt(lexeme, 10, 64)
 	if err != nil {
-		return log.LangError("Invalid integer literal", "", s.line, log.E(err))
+		scanErr := NewScanErrorWithLog("Invalid integer literal: "+err.Error(), s.line, "")
+		return scanErr
 	}
 
 	s.addToken(NUMBER_INT, intVal)
@@ -231,7 +236,8 @@ func (s *Scanner) addRealToken() error {
 	lexeme := string(s.source[s.start:s.current])
 	realVal, err := strconv.ParseFloat(lexeme, 64)
 	if err != nil {
-		return log.LangError("Invalid float literal", "", s.line, log.E(err))
+		scanErr := NewScanErrorWithLog("Invalid float literal: "+err.Error(), s.line, "")
+		return scanErr
 	}
 
 	s.addToken(NUMBER_REAL, realVal)

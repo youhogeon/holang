@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"errors"
 	"internal/ast"
 	"internal/scanner"
 	"slices"
@@ -227,7 +226,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Grouping{Expression: expr}, nil
 	}
 
-	return nil, errors.New("expect expression")
+	return nil, NewParseErrorWithLog("expect expression", p.peek())
 }
 
 func (p *Parser) synchronize() {
@@ -294,5 +293,5 @@ func (p *Parser) consumeOrError(t scanner.TokenType, message string) (*scanner.T
 		return p.advance(), nil
 	}
 
-	return nil, errors.New(message)
+	return nil, NewParseErrorWithLog(message, p.peek())
 }
