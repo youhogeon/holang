@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"internal/ast"
+	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
 	"os"
@@ -18,16 +20,16 @@ func runFile(fileName string) {
 }
 
 func runLoop() {
-	scanner := bufio.NewScanner(os.Stdin)
+	inputScanner := bufio.NewScanner(os.Stdin)
 
 	log.StdOut("> ")
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	for inputScanner.Scan() {
+		line := inputScanner.Bytes()
 		run(line)
 		log.StdOut("> ")
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := inputScanner.Err(); err != nil {
 		log.Fatal("Scanner error", log.E(err))
 	}
 }
@@ -45,8 +47,21 @@ func run(source []byte) {
 		return []log.Field{log.S("source", _sourceStr)}
 	})
 
-	scanner := scanner.NewScanner(sourceStr)
-	tokens, errs := scanner.ScanTokens()
+	lex := scanner.NewScanner(sourceStr)
+	tokens, errs := lex.ScanTokens()
 
 	log.Debug("Scan complete", log.A("tokens", tokens), log.A("errors", errs))
+
+	if len(errs) > 0 {
+		return
+	}
+
+	p := parser.NewParser(tokens)
+	printer := ast.NewAstPrinter()
+
+	root, err := p.Parse()
+
+	log.Debug("Parse complete", log.A("ast", root), log.E(err))
+
+	log.Debug("AST", log.S("astStr", printer.PrintExpr(root)))
 }
