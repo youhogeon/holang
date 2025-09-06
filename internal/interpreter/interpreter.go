@@ -12,10 +12,13 @@ type valueAndError struct {
 }
 
 type Interpreter struct {
+	env *Environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{
+		env: NewEnvironment(nil),
+	}
 }
 
 func (i *Interpreter) Interpret(program []ast.Stmt) (err error) {
@@ -55,7 +58,15 @@ func (i *Interpreter) evaluate(expr ast.Expr) (any, error) {
 }
 
 func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) any {
-	return &valueAndError{nil, nil}
+	value, err := i.evaluate(expr.Value)
+
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	i.env.Assign(expr.Name.Lexeme, value)
+
+	return &valueAndError{value, nil}
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
@@ -208,10 +219,29 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
-	return &valueAndError{nil, nil}
+	v, err := i.env.Get(expr.Name.Lexeme)
+
+	return &valueAndError{v, err}
 }
 
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) any {
+	return i.executeBlock(stmt.Statements, NewEnvironment(i.env))
+}
+
+func (i *Interpreter) executeBlock(stmt []ast.Stmt, environment *Environment) error {
+	prevEnv := i.env
+	defer func() { i.env = prevEnv }()
+
+	i.env = environment
+
+	for _, s := range stmt {
+		err := i.execute(s)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -250,6 +280,20 @@ func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) any {
 }
 
 func (i *Interpreter) VisitVarStmt(stmt *ast.Var) any {
+	var value any
+
+	if stmt.Initializer != nil {
+		var err error
+
+		value, err = i.evaluate(stmt.Initializer)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	i.env.Define(stmt.Name.Lexeme, value)
+
 	return nil
 }
 

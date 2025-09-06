@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"internal/ast"
-	"internal/interpreter"
+	_interpreter "internal/interpreter"
 	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
@@ -17,16 +17,17 @@ func runFile(fileName string) {
 		log.Fatal("Read file error", log.S("file", fileName), log.E(err))
 	}
 
-	run(fileBody)
+	run(fileBody, nil)
 }
 
 func runLoop() {
 	inputScanner := bufio.NewScanner(os.Stdin)
+	interpreter := _interpreter.NewInterpreter()
 
 	log.StdOut("> ")
 	for inputScanner.Scan() {
 		line := inputScanner.Bytes()
-		run(line)
+		run(line, interpreter)
 		log.StdOut("> ")
 	}
 
@@ -35,7 +36,7 @@ func runLoop() {
 	}
 }
 
-func run(source []byte) {
+func run(source []byte, interpreter *_interpreter.Interpreter) {
 	sourceStr := string(source)
 
 	log.InfoIfEnabled("Run source", func() []log.Field {
@@ -68,7 +69,10 @@ func run(source []byte) {
 		log.Debug("AST", log.S("astStr", printer.PrintStmt(stmt)))
 	}
 
-	interpreter := interpreter.NewInterpreter()
+	if interpreter == nil {
+		interpreter = _interpreter.NewInterpreter()
+	}
+
 	err := interpreter.Interpret(statements)
 
 	log.Debug("Interpret complete", log.E(err))

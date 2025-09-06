@@ -11,25 +11,6 @@ type Parser struct {
 	current int
 }
 
-// program        → statement* EOF ;
-//
-// statement      → exprStmt
-//                | printStmt ;
-//
-// exprStmt       → expression ";" ;
-// printStmt      → "print" expression ";" ;
-//
-// expression     → ternary ;
-// ternary        → equality ("?" expression ":" expression)? ;
-// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-// term           → factor ( ( "-" | "+" ) factor )* ;
-// factor         → unary ( ( "/" | "*" ) unary )* ;
-// unary          → ( "!" | "-" ) unary
-//                | primary ;
-// primary        → NUMBER | STRING | "true" | "false" | "nil"
-//                | "(" expression ")" ;
-
 func NewParser(tokens []scanner.Token) *Parser {
 	return &Parser{
 		tokens: tokens,
@@ -41,7 +22,7 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 	errors := make([]error, 0)
 
 	for !p.isAtEnd() {
-		stmt, err := p.parseStatements()
+		stmt, err := p.declaration()
 
 		if err != nil {
 			p.synchronize()
@@ -57,15 +38,55 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 	return statements, errors
 }
 
-func (p *Parser) parseStatements() (ast.Stmt, error) {
+func (p *Parser) declaration() (ast.Stmt, error) {
+	if p.match(scanner.VAR) {
+		return p.varDecl()
+	}
+
+	return p.statement()
+}
+
+func (p *Parser) varDecl() (*ast.Var, error) {
+	name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect variable name.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initializer ast.Expr
+
+	if p.match(scanner.EQUAL) {
+		initializer, err = p.expression()
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Var{
+		Name:        name,
+		Initializer: initializer,
+	}, nil
+}
+
+func (p *Parser) statement() (ast.Stmt, error) {
 	if p.match(scanner.PRINT) {
 		return p.printStatement()
+	}
+
+	if p.match(scanner.LEFT_BRACE) {
+		return p.block()
 	}
 
 	return p.exprStatement()
 }
 
-func (p *Parser) exprStatement() (ast.Stmt, error) {
+func (p *Parser) exprStatement() (*ast.Expression, error) {
 	expr, err := p.expression()
 
 	if err != nil {
@@ -83,7 +104,7 @@ func (p *Parser) exprStatement() (ast.Stmt, error) {
 	}, nil
 }
 
-func (p *Parser) printStatement() (ast.Stmt, error) {
+func (p *Parser) printStatement() (*ast.Print, error) {
 	expr, err := p.expression()
 
 	if err != nil {
@@ -101,8 +122,59 @@ func (p *Parser) printStatement() (ast.Stmt, error) {
 	}, nil
 }
 
+func (p *Parser) block() (*ast.Block, error) {
+	statements := make([]ast.Stmt, 0)
+
+	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
+		stmt, err := p.declaration()
+
+		if err != nil {
+			return &ast.Block{}, err
+		}
+
+		statements = append(statements, stmt)
+	}
+
+	_, err := p.consumeOrError(scanner.RIGHT_BRACE, "Expect '}' after block.")
+	if err != nil {
+		return &ast.Block{}, err
+	}
+
+	return &ast.Block{Statements: statements}, nil
+}
+
 func (p *Parser) expression() (ast.Expr, error) {
-	return p.ternary()
+	return p.assignment()
+}
+
+func (p *Parser) assignment() (ast.Expr, error) {
+	expr, err := p.ternary()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if p.match(scanner.EQUAL) {
+		equals := p.previous()
+		value, err := p.assignment()
+
+		if err != nil {
+			return nil, err
+		}
+
+		if variable, ok := expr.(*ast.Variable); ok {
+			name := variable.Name
+
+			return &ast.Assign{
+				Name:  name,
+				Value: value,
+			}, nil
+		}
+
+		return nil, NewParseErrorWithLog("invalid assignment target", equals)
+	}
+
+	return expr, nil
 }
 
 func (p *Parser) ternary() (ast.Expr, error) {
@@ -277,6 +349,10 @@ func (p *Parser) primary() (ast.Expr, error) {
 
 	if p.match(scanner.NUMBER_INT, scanner.NUMBER_REAL, scanner.STRING) {
 		return &ast.Literal{Value: p.previous().Literal}, nil
+	}
+
+	if p.match(scanner.IDENTIFIER) {
+		return &ast.Variable{Name: p.previous()}, nil
 	}
 
 	if p.match(scanner.LEFT_PAREN) {
