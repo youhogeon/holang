@@ -32,7 +32,7 @@ func (s *Block) AcceptString(visitor StmtVisitor) string {
 }
 
 type Class struct {
-	Name       scanner.Token
+	Name       *scanner.Token
 	Superclass *Variable
 	Methods    []*Function
 }
@@ -58,8 +58,8 @@ func (s *Expression) AcceptString(visitor StmtVisitor) string {
 }
 
 type Function struct {
-	Name   scanner.Token
-	Params []scanner.Token
+	Name   *scanner.Token
+	Params []*scanner.Token
 	Body   []Stmt
 }
 
@@ -98,7 +98,7 @@ func (s *Print) AcceptString(visitor StmtVisitor) string {
 }
 
 type Return struct {
-	Keyword scanner.Token
+	Keyword *scanner.Token
 	Value   Expr
 }
 
@@ -111,7 +111,7 @@ func (s *Return) AcceptString(visitor StmtVisitor) string {
 }
 
 type Var struct {
-	Name        scanner.Token
+	Name        *scanner.Token
 	Initializer Expr
 }
 

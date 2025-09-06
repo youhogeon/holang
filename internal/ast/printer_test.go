@@ -20,7 +20,7 @@ func TestAstPrinter_LiteralAndBinary(t *testing.T) {
 
 	bin := &Binary{
 		Left:     lit1,
-		Operator: scanner.Token{Lexeme: "+"},
+		Operator: &scanner.Token{Lexeme: "+"},
 		Right:    &Literal{Value: 2},
 	}
 	if got := p.PrintExpr(bin); got != "(+ 1 2)" {
@@ -37,12 +37,12 @@ func TestAstPrinter_GroupingUnaryVariableAndPrintStmt(t *testing.T) {
 		t.Fatalf("grouping: got %q want %q", got, "(group 42)")
 	}
 
-	un := &Unary{Operator: scanner.Token{Lexeme: "-"}, Right: lit}
+	un := &Unary{Operator: &scanner.Token{Lexeme: "-"}, Right: lit}
 	if got := p.PrintExpr(un); got != "(- 42)" {
 		t.Fatalf("unary: got %q want %q", got, "(- 42)")
 	}
 
-	variable := &Variable{Name: scanner.Token{Lexeme: "x"}}
+	variable := &Variable{Name: &scanner.Token{Lexeme: "x"}}
 	if got := p.PrintExpr(variable); got != "x" {
 		t.Fatalf("variable: got %q want %q", got, "x")
 	}

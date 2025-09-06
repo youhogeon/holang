@@ -24,7 +24,7 @@ type ExprVisitor interface {
 }
 
 type Assign struct {
-	Name  scanner.Token
+	Name  *scanner.Token
 	Value Expr
 }
 
@@ -38,7 +38,7 @@ func (a *Assign) AcceptString(visitor ExprVisitor) string {
 
 type Binary struct {
 	Left     Expr
-	Operator scanner.Token
+	Operator *scanner.Token
 	Right    Expr
 }
 
@@ -52,7 +52,7 @@ func (b *Binary) AcceptString(visitor ExprVisitor) string {
 
 type Call struct {
 	Callee    Expr
-	Paren     scanner.Token
+	Paren     *scanner.Token
 	Arguments []Expr
 }
 
@@ -66,7 +66,7 @@ func (c *Call) AcceptString(visitor ExprVisitor) string {
 
 type Get struct {
 	Object Expr
-	Name   scanner.Token
+	Name   *scanner.Token
 }
 
 func (g *Get) Accept(visitor ExprVisitor) any {
@@ -103,7 +103,7 @@ func (l *Literal) AcceptString(visitor ExprVisitor) string {
 
 type Logical struct {
 	Left     Expr
-	Operator scanner.Token
+	Operator *scanner.Token
 	Right    Expr
 }
 
@@ -117,7 +117,7 @@ func (l *Logical) AcceptString(visitor ExprVisitor) string {
 
 type Set struct {
 	Object Expr
-	Name   scanner.Token
+	Name   *scanner.Token
 	Value  Expr
 }
 
@@ -130,8 +130,8 @@ func (s *Set) AcceptString(visitor ExprVisitor) string {
 }
 
 type Super struct {
-	Keyword scanner.Token
-	Method  scanner.Token
+	Keyword *scanner.Token
+	Method  *scanner.Token
 }
 
 func (s *Super) Accept(visitor ExprVisitor) any {
@@ -143,7 +143,7 @@ func (s *Super) AcceptString(visitor ExprVisitor) string {
 }
 
 type This struct {
-	Keyword scanner.Token
+	Keyword *scanner.Token
 }
 
 func (t *This) Accept(visitor ExprVisitor) any {
@@ -156,9 +156,9 @@ func (t *This) AcceptString(visitor ExprVisitor) string {
 
 type Ternary struct {
 	Left           Expr
-	FirstOperator  scanner.Token
+	FirstOperator  *scanner.Token
 	Mid            Expr
-	SecondOperator scanner.Token
+	SecondOperator *scanner.Token
 	Right          Expr
 }
 
@@ -171,7 +171,7 @@ func (u *Ternary) AcceptString(visitor ExprVisitor) string {
 }
 
 type Unary struct {
-	Operator scanner.Token
+	Operator *scanner.Token
 	Right    Expr
 }
 
@@ -184,7 +184,7 @@ func (u *Unary) AcceptString(visitor ExprVisitor) string {
 }
 
 type Variable struct {
-	Name scanner.Token
+	Name *scanner.Token
 }
 
 func (v *Variable) Accept(visitor ExprVisitor) any {

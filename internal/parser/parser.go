@@ -66,9 +66,9 @@ func (p *Parser) ternary() (ast.Expr, error) {
 
 		return &ast.Ternary{
 			Left:           expr,
-			FirstOperator:  *firstOp,
+			FirstOperator:  firstOp,
 			Mid:            mid,
-			SecondOperator: *secondOp,
+			SecondOperator: secondOp,
 			Right:          right,
 		}, nil
 	}
@@ -93,7 +93,7 @@ func (p *Parser) equality() (ast.Expr, error) {
 
 		expr = &ast.Binary{
 			Left:     expr,
-			Operator: *operator,
+			Operator: operator,
 			Right:    right,
 		}
 	}
@@ -118,7 +118,7 @@ func (p *Parser) comparison() (ast.Expr, error) {
 
 		expr = &ast.Binary{
 			Left:     expr,
-			Operator: *operator,
+			Operator: operator,
 			Right:    right,
 		}
 	}
@@ -143,7 +143,7 @@ func (p *Parser) term() (ast.Expr, error) {
 
 		expr = &ast.Binary{
 			Left:     expr,
-			Operator: *operator,
+			Operator: operator,
 			Right:    right,
 		}
 	}
@@ -168,7 +168,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 
 		expr = &ast.Binary{
 			Left:     expr,
-			Operator: *operator,
+			Operator: operator,
 			Right:    right,
 		}
 	}
@@ -186,7 +186,7 @@ func (p *Parser) unary() (ast.Expr, error) {
 		}
 
 		return &ast.Unary{
-			Operator: *operator,
+			Operator: operator,
 			Right:    right,
 		}, nil
 	}
