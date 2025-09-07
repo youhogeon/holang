@@ -73,6 +73,10 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		log.Debug("AST", log.S("astStr", printer.PrintStmt(stmt)))
 	}
 
+	if len(errs) > 0 {
+		return
+	}
+
 	if interpreter == nil {
 		interpreter = _interpreter.NewInterpreter()
 	}
