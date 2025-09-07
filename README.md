@@ -15,13 +15,16 @@
 * Script
     ```sh
     # Windows
-    ./dist/holang ./sample/gugudan
+    ./dist/holang ./sample/game
     # Mac
-    ./dist/holang_darwin_amd64 ./sample/gugudan
-    ./dist/holang_darwin_arm64 ./sample/gugudan
+    ./dist/holang_darwin_amd64 ./sample/game
+    ./dist/holang_darwin_arm64 ./sample/game
     # Linux
-    ./dist/holang_linux_amd64 ./sample/gugudan
+    ./dist/holang_linux_amd64 ./sample/game
     ```
+
+### 옵션
+* `--debug`
 
 ## 예제
 ```holang
