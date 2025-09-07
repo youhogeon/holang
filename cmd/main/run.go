@@ -15,7 +15,10 @@ import (
 func runFile(fileName string) {
 	fileBody, err := os.ReadFile(fileName)
 	if err != nil {
-		log.Fatal("Read file error", log.S("file", fileName), log.E(err))
+		fileBody, err = os.ReadFile(fileName + ".holang")
+		if err != nil {
+			log.Fatal("Read file error", log.S("file", fileName), log.E(err))
+		}
 	}
 
 	run(fileBody, nil)
