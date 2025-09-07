@@ -75,3 +75,12 @@ var ggd = PrettyGuGuDan(dan);
 
 ggd.show();
 ```
+
+## 문서
+### 내장 함수
+* `print(message)`
+* `input(message)`
+* `clock()`
+* `str(value)`
+* `int(value)`
+* `float(value)`
