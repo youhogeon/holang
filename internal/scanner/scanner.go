@@ -3,6 +3,7 @@ package scanner
 import (
 	"internal/util/log"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -123,22 +124,68 @@ func (s *Scanner) scanToken() error {
 			s.addToken(GREATER, nil)
 		}
 	case '"':
-		for s.peek() != '"' && !s.isAtEnd() {
-			if s.peek() == '\n' {
+		// String literal with escape support (\n, \r, \t, \", \\, \uXXXX)
+		var builder strings.Builder
+
+		for !s.isAtEnd() {
+			ch := s.advance()
+			if ch == '\n' { // raw newline inside string literal
 				s.line++
 			}
+			if ch == '"' { // closing quote
+				// finished (we already consumed closing quote; break)
+				break
+			}
 
-			s.advance()
+			if ch == '\\' { // escape sequence
+				if s.isAtEnd() {
+					return NewScanErrorWithLog("Unterminated escape sequence", s.line, "")
+				}
+				esc := s.advance()
+				switch esc {
+				case 'n':
+					builder.WriteRune('\n')
+				case 'r':
+					builder.WriteRune('\r')
+				case 't':
+					builder.WriteRune('\t')
+				case '"':
+					builder.WriteRune('"')
+				case '\\':
+					builder.WriteRune('\\')
+				case 'u':
+					// Expect exactly 4 hex digits.
+					hexDigits := make([]rune, 0, 4)
+					for i := 0; i < 4; i++ {
+						if s.isAtEnd() {
+							return NewScanErrorWithLog("Incomplete unicode escape (expect 4 hex digits)", s.line, "")
+						}
+						h := s.advance()
+						if !(h >= '0' && h <= '9' || h >= 'a' && h <= 'f' || h >= 'A' && h <= 'F') {
+							return NewScanErrorWithLog("Invalid unicode escape (non-hex digit)", s.line, "")
+						}
+						hexDigits = append(hexDigits, h)
+					}
+					code, err := strconv.ParseInt(string(hexDigits), 16, 32)
+					if err != nil {
+						return NewScanErrorWithLog("Invalid unicode escape: "+err.Error(), s.line, "")
+					}
+					builder.WriteRune(rune(code))
+				default:
+					return NewScanErrorWithLog("Unknown escape sequence: \\"+string(esc), s.line, "")
+				}
+				continue
+			}
+
+			builder.WriteRune(ch)
 		}
 
-		if s.isAtEnd() {
-			err := NewScanErrorWithLog("Unterminated string", s.line, "")
-			return err
+		if s.isAtEnd() && (len(s.source) == 0 || s.source[s.current-1] != '"') {
+			return NewScanErrorWithLog("Unterminated string", s.line, "")
 		}
 
-		s.advance()
-
-		s.addToken(STRING, string(s.source[s.start+1:s.current-1]))
+		// add token including original lexeme slice; literal is decoded content
+		s.addToken(STRING, builder.String())
 	case '.':
 		if !s.isDigit(s.peek()) {
 			s.addToken(DOT, nil)
