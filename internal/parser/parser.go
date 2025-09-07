@@ -578,7 +578,7 @@ func (p *Parser) logicOr() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.AND) {
+	for p.match(scanner.OR) {
 		operator := p.previous()
 		right, err := p.logicAnd()
 

@@ -81,18 +81,15 @@ func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) any {
 		return &valueAndError{nil, err}
 	}
 
-	distance := i.locals[expr]
-	if distance != 0 {
+	if distance, ok := i.locals[expr]; ok {
 		err := i.env.AssignAt(distance, expr.Name.Lexeme, value)
 		return &valueAndError{value, err}
 	}
 
 	err = i.globals.Assign(expr.Name.Lexeme, value)
-
 	if err != nil {
 		return &valueAndError{nil, err}
 	}
-
 	return &valueAndError{value, nil}
 }
 
