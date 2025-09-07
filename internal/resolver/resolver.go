@@ -9,16 +9,17 @@ import (
 )
 
 type Resolver struct {
-	interpreter *interpreter.Interpreter
-	scopes      []map[string]bool
-	currentFunc FunctionType
+	interpreter  *interpreter.Interpreter
+	scopes       []map[string]bool
+	currentFunc  FunctionType
+	currentClass ClassType
 }
 
 func NewResolver(interpreter *interpreter.Interpreter) *Resolver {
 	return &Resolver{
 		interpreter: interpreter,
 		scopes:      make([]map[string]bool, 0),
-		currentFunc: MODULE,
+		currentFunc: NOT_FUNCTION_TYPE,
 	}
 }
 
@@ -49,10 +50,7 @@ func (r *Resolver) VisitAssignExpr(expr *ast.Assign) any {
 		return err
 	}
 
-	err = r.resolveLocal(expr, expr.Name)
-	if err != nil {
-		return err
-	}
+	r.resolveLocal(expr, expr.Name)
 
 	return nil
 }
@@ -88,6 +86,11 @@ func (r *Resolver) VisitCallExpr(expr *ast.Call) any {
 }
 
 func (r *Resolver) VisitGetExpr(expr *ast.Get) any {
+	err := expr.Object.Accept(r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -119,14 +122,38 @@ func (r *Resolver) VisitLogicalExpr(expr *ast.Logical) any {
 }
 
 func (r *Resolver) VisitSetExpr(expr *ast.Set) any {
+	err := expr.Value.Accept(r)
+	if err != nil {
+		return err
+	}
+
+	err = expr.Object.Accept(r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (r *Resolver) VisitSuperExpr(expr *ast.Super) any {
+	if r.currentClass == NOT_CLASS_TYPE {
+		return errors.New("cannot use 'super' outside of a class")
+	} else if r.currentClass != SUBCLASS {
+		return errors.New("cannot use 'super' in a class with no superclass")
+	}
+
+	r.resolveLocal(expr, expr.Keyword)
+
 	return nil
 }
 
 func (r *Resolver) VisitThisExpr(expr *ast.This) any {
+	if r.currentClass == NOT_CLASS_TYPE {
+		return errors.New("cannot use 'this' outside of a class")
+	}
+
+	r.resolveLocal(expr, expr.Keyword)
+
 	return nil
 }
 
@@ -165,10 +192,7 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
 		}
 	}
 
-	err := r.resolveLocal(expr, expr.Name)
-	if err != nil {
-		return err
-	}
+	r.resolveLocal(expr, expr.Name)
 
 	return nil
 }
@@ -187,6 +211,50 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 }
 
 func (r *Resolver) VisitClassStmt(stmt *ast.Class) any {
+	enclosingClass := r.currentClass
+	r.currentClass = CLASS
+
+	r.declare(stmt.Name)
+	r.define(stmt.Name)
+
+	if stmt.Superclass != nil {
+		if stmt.Name.Lexeme == stmt.Superclass.Name.Lexeme {
+			return errors.New("a class cannot inherit from itself")
+		}
+
+		r.currentClass = SUBCLASS
+		err := stmt.Superclass.Accept(r)
+		if err != nil {
+			return err
+		}
+
+		r.beginScope()
+		r.scopes[len(r.scopes)-1]["super"] = true
+	}
+
+	r.beginScope()
+	r.scopes[len(r.scopes)-1]["this"] = true
+
+	for _, method := range stmt.Methods {
+		fnType := METHOD
+
+		if method.Name.Lexeme == "init" {
+			fnType = INITIALIZER
+		}
+
+		err := r.resolveFunction(method, fnType)
+		if err != nil {
+			return err
+		}
+	}
+
+	r.endScope()
+	if stmt.Superclass != nil {
+		r.endScope()
+	}
+
+	r.currentClass = enclosingClass
+
 	return nil
 }
 
@@ -202,11 +270,20 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 
 	r.define(stmt.Name)
 
+	err = r.resolveFunction(stmt, FUNCTION)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Resolver) resolveFunction(function *ast.Function, fnType FunctionType) error {
 	prevFunc := r.currentFunc
-	r.currentFunc = FUNCTION
+	r.currentFunc = fnType
 	r.beginScope()
 
-	for _, param := range stmt.Params {
+	for _, param := range function.Params {
 		err := r.declare(param)
 		if err != nil {
 			return err
@@ -215,7 +292,7 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 		r.define(param)
 	}
 
-	err = r.resolveStmts(stmt.Body)
+	err := r.resolveStmts(function.Body)
 	if err != nil {
 		return err
 	}
@@ -252,11 +329,15 @@ func (r *Resolver) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
-	if r.currentFunc == MODULE {
+	if r.currentFunc == NOT_FUNCTION_TYPE {
 		return errors.New("cannot return from top-level code")
 	}
 
 	if stmt.Value != nil {
+		if r.currentFunc == INITIALIZER {
+			return errors.New("cannot return a value from an initializer")
+		}
+
 		err := stmt.Value.Accept(r)
 		if err != nil {
 			return err
@@ -338,13 +419,11 @@ func (r *Resolver) define(name *scanner.Token) {
 	scope[name.Lexeme] = true
 }
 
-func (r *Resolver) resolveLocal(expr ast.Expr, name *scanner.Token) error {
+func (r *Resolver) resolveLocal(expr ast.Expr, name *scanner.Token) {
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			r.interpreter.Resolve(expr, len(r.scopes)-1-i)
-			return nil
+			return
 		}
 	}
-
-	return errors.New("Variable not found in any scope: " + name.Lexeme)
 }

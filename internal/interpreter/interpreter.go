@@ -132,7 +132,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 	case scanner.SLASH:
 		return binaryNumericOp(
 			left, right,
-			func(a, b int64) any { return a / b },
+			func(a, b int64) any { return float64(a) / float64(b) },
 			func(a, b float64) any { return a / b },
 		)
 	case scanner.GREATER:
@@ -198,7 +198,18 @@ func (i *Interpreter) VisitCallExpr(expr *ast.Call) any {
 }
 
 func (i *Interpreter) VisitGetExpr(expr *ast.Get) any {
-	return &valueAndError{nil, nil}
+	object, err := i.evaluate(expr.Object)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	if instance, ok := object.(*Instance); ok {
+		value, err := instance.get(expr.Name.Lexeme)
+
+		return &valueAndError{value, err}
+	}
+
+	return &valueAndError{nil, NewRuntimeErrorWithLog("only instances have properties")}
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.Grouping) any {
@@ -236,15 +247,58 @@ func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) any {
 }
 
 func (i *Interpreter) VisitSetExpr(expr *ast.Set) any {
-	return &valueAndError{nil, nil}
+	value, err := i.evaluate(expr.Value)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	object, err := i.evaluate(expr.Object)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	if instance, ok := object.(*Instance); ok {
+		instance.set(expr.Name.Lexeme, value)
+
+		return &valueAndError{value, nil}
+	}
+
+	return &valueAndError{nil, NewRuntimeErrorWithLog("only instances have fields")}
 }
 
 func (i *Interpreter) VisitSuperExpr(expr *ast.Super) any {
-	return &valueAndError{nil, nil}
+	distance := i.locals[expr]
+	superclass, err := i.env.GetAt(distance, "super")
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	object, err := i.env.GetAt(distance-1, "this")
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	cls, ok := superclass.(*Class)
+	if !ok {
+		return &valueAndError{nil, NewRuntimeErrorWithLog("super must be a class")}
+	}
+
+	instance, ok := object.(*Instance)
+	if !ok {
+		return &valueAndError{nil, NewRuntimeErrorWithLog("this must be an instance")}
+	}
+
+	method := cls.findMethod(expr.Method.Lexeme)
+	if method == nil {
+		return &valueAndError{nil, NewRuntimeErrorWithLog("undefined property: " + expr.Method.Lexeme)}
+	}
+
+	return &valueAndError{method.bind(instance), nil}
 }
 
 func (i *Interpreter) VisitThisExpr(expr *ast.This) any {
-	return &valueAndError{nil, nil}
+	v, err := i.lookupVariable(expr.Keyword, expr)
+	return &valueAndError{v, err}
 }
 
 func (i *Interpreter) VisitTernaryExpr(expr *ast.Ternary) any {
@@ -286,13 +340,16 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
+	v, err := i.lookupVariable(expr.Name, expr)
+	return &valueAndError{v, err}
+}
+
+func (i *Interpreter) lookupVariable(name *scanner.Token, expr ast.Expr) (any, error) {
 	if distance, ok := i.locals[expr]; ok {
-		v, err := i.env.GetAt(distance, expr.Name.Lexeme)
-		return &valueAndError{v, err}
+		return i.env.GetAt(distance, name.Lexeme)
 	}
 
-	v, err := i.globals.Get(expr.Name.Lexeme)
-	return &valueAndError{v, err}
+	return i.globals.Get(name.Lexeme)
 }
 
 func (i *Interpreter) VisitBlockStmt(stmt *ast.Block) any {
@@ -317,6 +374,49 @@ func (i *Interpreter) executeBlock(stmt []ast.Stmt, environment *Environment) er
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ast.Class) any {
+	var superclass *Class
+	if stmt.Superclass != nil {
+		v, err := i.evaluate(stmt.Superclass)
+		if err != nil {
+			return err
+		}
+
+		if sc, ok := v.(*Class); ok {
+			superclass = sc
+		} else {
+			return NewRuntimeErrorWithLog("superclass must be a class")
+		}
+	}
+
+	i.env.Define(stmt.Name.Lexeme, nil)
+
+	if stmt.Superclass != nil {
+		i.env = NewEnvironment(i.env)
+		i.env.Define("super", superclass)
+	}
+
+	methods := make(map[string]*Function)
+	for _, method := range stmt.Methods {
+		function := &Function{
+			declaration:   method,
+			clousure:      i.env,
+			isInitializer: method.Name.Lexeme == "init",
+		}
+		methods[method.Name.Lexeme] = function
+	}
+
+	cls := &Class{
+		name:       stmt.Name.Lexeme,
+		methods:    methods,
+		superclass: superclass,
+	}
+
+	if stmt.Superclass != nil {
+		i.env = i.env.enclosing
+	}
+
+	i.env.Assign(stmt.Name.Lexeme, cls)
+
 	return nil
 }
 
@@ -370,6 +470,10 @@ func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) any {
+	if stmt.Value == nil {
+		return &returnSignal{value: nil}
+	}
+
 	value, err := i.evaluate(stmt.Value)
 
 	if err != nil {

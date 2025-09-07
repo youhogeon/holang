@@ -142,6 +142,7 @@ func (s *Scanner) scanToken() error {
 	case '.':
 		if !s.isDigit(s.peek()) {
 			s.addToken(DOT, nil)
+			break
 		}
 
 		fallthrough // If it's a digit, handle it in the number section.

@@ -13,8 +13,15 @@ type Parser struct {
 }
 
 func NewParser(tokens []scanner.Token) *Parser {
+	tokensWithoutComments := make([]scanner.Token, 0, len(tokens))
+	for _, token := range tokens {
+		if token.TokenType != scanner.COMMENT && token.TokenType != scanner.MULTI_COMMENT {
+			tokensWithoutComments = append(tokensWithoutComments, token)
+		}
+	}
+
 	return &Parser{
-		tokens: tokens,
+		tokens: tokensWithoutComments,
 	}
 }
 
@@ -23,10 +30,6 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 	errors := make([]error, 0)
 
 	for !p.isAtEnd() {
-		if p.match(scanner.COMMENT, scanner.MULTI_COMMENT) {
-			continue
-		}
-
 		stmt, err := p.declaration()
 
 		if err != nil {
@@ -46,6 +49,10 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 func (p *Parser) declaration() (ast.Stmt, error) {
 	if p.match(scanner.VAR) {
 		return p.varDecl()
+	}
+
+	if p.match(scanner.CLASS) {
+		return p.classDecl()
 	}
 
 	if p.match(scanner.FUN) {
@@ -80,6 +87,55 @@ func (p *Parser) varDecl() (*ast.Var, error) {
 	return &ast.Var{
 		Name:        name,
 		Initializer: initializer,
+	}, nil
+}
+
+func (p *Parser) classDecl() (*ast.Class, error) {
+	name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect class name.")
+	if err != nil {
+		return nil, err
+	}
+
+	var superclass *ast.Variable
+
+	if p.match(scanner.LESS) {
+		superToken, err := p.consumeOrError(scanner.IDENTIFIER, "Expect superclass name.")
+		if err != nil {
+			return nil, err
+		}
+
+		superclass = &ast.Variable{Name: superToken}
+
+		if name.Lexeme == superToken.Lexeme {
+			return nil, NewParseErrorWithLog("a class cannot inherit from itself", superToken)
+		}
+	}
+
+	_, err = p.consumeOrError(scanner.LEFT_BRACE, "Expect '{' before class body.")
+	if err != nil {
+		return nil, err
+	}
+
+	methods := make([]*ast.Function, 0)
+
+	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
+		method, err := p.funDecl()
+		if err != nil {
+			return nil, err
+		}
+
+		methods = append(methods, method)
+	}
+
+	_, err = p.consumeOrError(scanner.RIGHT_BRACE, "Expect '}' after class body.")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Class{
+		Name:       name,
+		Methods:    methods,
+		Superclass: superclass,
 	}, nil
 }
 
@@ -462,6 +518,14 @@ func (p *Parser) assignment() (ast.Expr, error) {
 			}, nil
 		}
 
+		if get, ok := expr.(*ast.Get); ok {
+			return &ast.Set{
+				Object: get.Object,
+				Name:   get.Name,
+				Value:  value,
+			}, nil
+		}
+
 		return nil, NewParseErrorWithLog("invalid assignment target", equals)
 	}
 
@@ -687,6 +751,16 @@ func (p *Parser) call() (ast.Expr, error) {
 			if err != nil {
 				return nil, err
 			}
+		} else if p.match(scanner.DOT) {
+			name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+
+			expr = &ast.Get{
+				Object: expr,
+				Name:   name,
+			}
 		} else {
 			break
 		}
@@ -742,6 +816,10 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Literal{Value: nil}, nil
 	}
 
+	if p.match(scanner.THIS) {
+		return &ast.This{Keyword: p.previous()}, nil
+	}
+
 	if p.match(scanner.NUMBER_INT, scanner.NUMBER_REAL, scanner.STRING) {
 		return &ast.Literal{Value: p.previous().Literal}, nil
 	}
@@ -764,6 +842,25 @@ func (p *Parser) primary() (ast.Expr, error) {
 		}
 
 		return &ast.Grouping{Expression: expr}, nil
+	}
+
+	if p.match(scanner.SUPER) {
+		keyword := p.previous()
+
+		_, err := p.consumeOrError(scanner.DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+
+		method, err := p.consumeOrError(scanner.IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.Super{
+			Keyword: keyword,
+			Method:  method,
+		}, nil
 	}
 
 	return nil, NewParseErrorWithLog("expect expression", p.peek())
