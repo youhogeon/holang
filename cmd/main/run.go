@@ -6,6 +6,7 @@ import (
 	"internal/ast"
 	_interpreter "internal/interpreter"
 	"internal/parser"
+	"internal/resolver"
 	"internal/scanner"
 	"internal/util/log"
 	"os"
@@ -73,7 +74,16 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		interpreter = _interpreter.NewInterpreter()
 	}
 
-	err := interpreter.Interpret(statements)
+	resolver := resolver.NewResolver(interpreter)
+	err := resolver.Resolve(statements)
+
+	log.Debug("Resolve complete", log.E(err))
+
+	if err != nil {
+		return
+	}
+
+	err = interpreter.Interpret(statements)
 
 	log.Debug("Interpret complete", log.E(err))
 }

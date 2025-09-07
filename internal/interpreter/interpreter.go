@@ -14,6 +14,7 @@ type valueAndError struct {
 type Interpreter struct {
 	env     *Environment
 	globals *Environment
+	locals  map[ast.Expr]int
 }
 
 func NewInterpreter() *Interpreter {
@@ -24,6 +25,7 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{
 		env:     globals,
 		globals: globals,
+		locals:  make(map[ast.Expr]int),
 	}
 }
 
@@ -43,6 +45,10 @@ func (i *Interpreter) Interpret(program []ast.Stmt) (err error) {
 	}
 
 	return nil
+}
+
+func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
+	i.locals[expr] = depth
 }
 
 func (i *Interpreter) execute(stmt ast.Stmt) error {
@@ -70,7 +76,17 @@ func (i *Interpreter) VisitAssignExpr(expr *ast.Assign) any {
 		return &valueAndError{nil, err}
 	}
 
-	i.env.Assign(expr.Name.Lexeme, value)
+	distance := i.locals[expr]
+	if distance != 0 {
+		err := i.env.AssignAt(distance, expr.Name.Lexeme, value)
+		return &valueAndError{value, err}
+	}
+
+	err = i.globals.Assign(expr.Name.Lexeme, value)
+
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
 
 	return &valueAndError{value, nil}
 }
@@ -270,8 +286,12 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
-	v, err := i.env.Get(expr.Name.Lexeme)
+	if distance, ok := i.locals[expr]; ok {
+		v, err := i.env.GetAt(distance, expr.Name.Lexeme)
+		return &valueAndError{v, err}
+	}
 
+	v, err := i.globals.Get(expr.Name.Lexeme)
 	return &valueAndError{v, err}
 }
 

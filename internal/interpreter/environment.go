@@ -52,3 +52,30 @@ func (e *Environment) Get(name string) (any, error) {
 
 	return env.Values[name], nil
 }
+
+func (e *Environment) GetAt(distance int, name string) (any, error) {
+	env := e
+
+	for d := 0; d < distance; d++ {
+		env = env.enclosing
+	}
+
+	return env.Get(name)
+}
+
+func (e *Environment) AssignAt(distance int, name string, value any) error {
+	env := e
+
+	for d := 0; d < distance; d++ {
+		env = env.enclosing
+	}
+
+	_, ok := env.Values[name]
+	if !ok {
+		return NewRuntimeErrorWithLog("cannot assign to undefined variable: " + name)
+	}
+
+	env.Values[name] = value
+
+	return nil
+}

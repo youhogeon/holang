@@ -5,6 +5,7 @@ use (
 	./internal/ast
 	./internal/interpreter
 	./internal/parser
+	./internal/resolver
 	./internal/scanner
 	./internal/util
 )
