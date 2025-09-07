@@ -87,3 +87,10 @@ ggd.show();
 * `str(value)`
 * `int(value)`
 * `float(value)`
+* `rand()` 0이상 1미만 난수(float)
+* `randInt(n)` 0이상 n미만 정수 난수
+* `sleep(ms)` ms 동안 대기
+* `clear()` 터미널 화면 지움
+* `strlen(s)` 문자열 길이
+* `substring(s, start, end)` start~end-1 부분 문자열
+* `getch()` 한 글자 입력

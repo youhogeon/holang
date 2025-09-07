@@ -25,7 +25,14 @@ func NewInterpreter() *Interpreter {
 	globals.Define("clock", &BuiltInFnClock{})
 	globals.Define("str", &BuiltInFnToString{})
 	globals.Define("int", &BuiltInFnToInt{})
-	globals.Define("foat", &BuiltInFnToFloat{})
+	globals.Define("float", &BuiltInFnToFloat{})
+	globals.Define("rand", &BuiltInFnRand{})
+	globals.Define("randInt", &BuiltInFnRandInt{})
+	globals.Define("sleep", &BuiltInFnSleep{})
+	globals.Define("clear", &BuiltInFnClear{})
+	globals.Define("strlen", &BuiltInFnStrLen{})
+	globals.Define("substring", &BuiltInFnSubstring{})
+	globals.Define("getch", &BuiltInFnGetch{})
 
 	return &Interpreter{
 		env:     globals,
