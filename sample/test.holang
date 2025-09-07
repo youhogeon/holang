@@ -1,0 +1,209 @@
+// suite_basic.lox
+// ---- 미니 테스트 프레임워크 (문자열+숫자 연결 금지, 로그는 분리 출력) ----
+var PASS = 0;
+var FAIL = 0;
+
+fun ok(name) {
+  PASS = PASS + 1;
+  print "OK";
+  print name;
+}
+
+fun bad(name, got, want) {
+  FAIL = FAIL + 1;
+  print "BAD";
+  print name;
+  print "got:";
+  print got;
+  print "want:";
+  print want;
+}
+
+fun assert_eq(name, got, want) {
+  if (got == want) ok(name); else bad(name, got, want);
+}
+
+fun assert_true(name, v)  { if (v) ok(name); else bad(name, v, true); }
+fun assert_false(name, v) { if (v) bad(name, v, false); else ok(name); }
+
+// ---- 리터럴/산술/우선순위 ----
+assert_eq("number literal", 42, 42);
+assert_eq("arithmetic", 1 + 2 * 3, 7);
+assert_eq("grouping>*", (1 + 2) * 3, 9);
+assert_eq("division", 7 / 2, 3.5);
+assert_true("comparison <", 3 < 5);
+assert_true("comparison ==", 2 == 2);
+assert_true("comparison !=", 2 != 3);
+
+// ---- 변수/스코프/섀도잉 ----
+var a = 10;
+{
+  var a = 20;
+  assert_eq("shadow inner a", a, 20);
+}
+assert_eq("outer a intact", a, 10);
+
+// ---- if/else ----
+var x = 0;
+if (true) x = 1; else x = 2;
+assert_eq("if true branch", x, 1);
+if (false) x = 3; else x = 4;
+assert_eq("if false branch", x, 4);
+
+// ---- while / for ----
+var s = 0;
+var i = 1;
+while (i <= 5) {
+  s = s + i;
+  i = i + 1;
+}
+assert_eq("while sum 1..5", s, 15);
+
+var s2 = 0;
+for (var j = 1; j <= 5; j = j + 1) s2 = s2 + j;
+assert_eq("for sum 1..5", s2, 15);
+
+// ---- 논리 단축평가 ----
+var z = 0;
+false and (z = 1);
+assert_eq("and short-circuit", z, 0);
+true or (z = 2);
+assert_eq("or short-circuit", z, 0);
+
+// ---- 함수/리턴/재귀 ----
+fun add(a, b) { return a + b; }
+assert_eq("fun add", add(3, 4), 7);
+
+fun fact(n) { if (n <= 1) return 1; return n * fact(n - 1); }
+assert_eq("recursion fact(5)", fact(5), 120);
+
+// ---- 클로저 캡처 ----
+fun makeCounter() {
+  var c = 0;
+  fun inc() { c = c + 1; return c; }
+  return inc;
+}
+var ctr = makeCounter();
+assert_eq("closure 1st", ctr(), 1);
+assert_eq("closure 2nd", ctr(), 2);
+
+// ---- 일급 함수 ----
+fun id(x) { return x; }
+assert_eq("first-class function", id(add)(5, 6), 11);
+
+// 클래스/인스턴스/this/초기화자/바운드 메서드/섀도잉 (문자열 연결 금지)
+class Point {
+  init(x, y) { this.x = x; this.y = y; }
+  move(dx, dy) { this.x = this.x + dx; this.y = this.y + dy; }
+  sum() { return this.x + this.y; }
+  len2() { return this.x * this.x + this.y * this.y; }
+  getX(){ return this.x; }
+  getY(){ return this.y; }
+}
+
+var p = Point(3, 4);
+assert_eq("init x", p.getX(), 3);
+assert_eq("init y", p.getY(), 4);
+p.move(1, -2);
+assert_eq("method this x", p.getX(), 4);
+assert_eq("method this y", p.getY(), 2);
+assert_eq("method compute len2", p.len2(), 20);
+
+// 바운드 메서드 (this 바인딩 확인)
+var s = p.sum;
+assert_eq("bound method call", s(), 6);
+
+// 필드/메서드 섀도잉: 같은 이름 필드가 메서드를 덮어야 함
+p.sum = 999;
+assert_eq("field shadows method", p.sum, 999);
+
+// 인스턴스 상태 독립
+var p2 = Point(0, 0);
+p2.move(10, 10);
+assert_eq("instance isolation p.x", p.getX(), 4);
+assert_eq("instance isolation p2.x", p2.getX(), 10);
+
+// 재귀 피보나치
+fun fib(n){
+  if (n <= 1) return n;
+  return fib(n-1) + fib(n-2);
+}
+assert_eq("fib(10)", fib(10), 55);
+
+// 1..1000 합
+var sum = 0;
+for (var i=1; i<=1000; i=i+1) sum = sum + i;
+assert_eq("sum 1..1000", sum, 500500);
+
+// 다중 클로저: 배열 없이 각각 생성해 검증
+fun makeSquareClosure(v){
+  var x = v;
+  fun f(){ return x * x; }
+  return f;
+}
+var f0 = makeSquareClosure(3);
+var f1 = makeSquareClosure(7);
+assert_eq("closure f0", f0(), 9);
+assert_eq("closure f1", f1(), 49);
+
+// --- 슈퍼클래스/서브클래스 ---
+class Animal {
+  init(name) { this.name = name; }
+  speak() { return 1; }         // 동작만 숫자로 검증
+  getName(){ return this.name; }
+  tag(){ return 10; }
+}
+
+class Dog < Animal {
+  init(name, age) { super.init(name); this.age = age; }
+  speak() { return 2; }         // 오버라이드
+  parentSpeak(){ return super.speak(); }  // super 직접 호출
+  getAge(){ return this.age; }
+  tag(){ return 20; }           // 메서드 탐색 순서: 서브 우선
+  callViaVar(){ var m = super.speak; return m(); } // super 바운드 후 호출
+  self(){ return this; }
+}
+
+// --- 생성/초기화 체인 ---
+var d = Dog("Rex", 5);
+assert_eq("super.init name set", d.getName(), "Rex");
+assert_eq("sub init age set", d.getAge(), 5);
+
+// --- 오버라이드/탐색 ---
+assert_eq("override speak()", d.speak(), 2);
+assert_eq("super.speak()", d.parentSpeak(), 1);
+assert_eq("super bound var call", d.callViaVar(), 1);
+assert_eq("method lookup prefers subclass", d.tag(), 20);
+
+// --- 상속된 메서드 접근 ---
+assert_eq("inherited getName()", d.getName(), "Rex");
+
+// --- 메서드 바인딩/this 유지 ---
+var gn = d.getName;
+assert_eq("bound method keeps this", gn(), "Rex");
+
+// --- 인스턴스 상태 독립성 ---
+var d2 = Dog("Bob", 9);
+assert_eq("isolation name d", d.getName(), "Rex");
+assert_eq("isolation name d2", d2.getName(), "Bob");
+
+// --- 필드가 메서드 섀도잉 ---
+d.speak = 777;
+assert_eq("field shadows method", d.speak, 777);
+// 여기서 d.speak() 호출하면 런타임 에러여야 하니 호출하지 않는다.
+
+// --- init 반환 무시 확인(슈퍼·서브 동일 규칙 준수) ---
+class Returny {
+  init(v){ this.v=v; return; }
+  get(){ return this.v; }
+}
+class Child < Returny {
+  init(v){ var r = super.init(v); return; } // 둘 다 무시되고 인스턴스가 반환
+}
+var c = Child(33);
+assert_eq("init always returns instance", c.get(), 33);
+
+// ---- 요약 ----
+print "---- SUMMARY (basic) ----";
+print "PASS"; print PASS;
+print "FAIL"; print FAIL;
