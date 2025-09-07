@@ -165,7 +165,27 @@ func (i *Interpreter) VisitLiteralExpr(expr *ast.Literal) any {
 }
 
 func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) any {
-	return &valueAndError{nil, nil}
+	left, err := i.evaluate(expr.Left)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	if expr.Operator.TokenType == scanner.OR {
+		if isTruthy(left) {
+			return &valueAndError{left, nil}
+		}
+	} else {
+		if !isTruthy(left) {
+			return &valueAndError{left, nil}
+		}
+	}
+
+	right, err := i.evaluate(expr.Right)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	return &valueAndError{right, nil}
 }
 
 func (i *Interpreter) VisitSetExpr(expr *ast.Set) any {
@@ -260,6 +280,26 @@ func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) any {
 }
 
 func (i *Interpreter) VisitIfStmt(stmt *ast.If) any {
+	value, err := i.evaluate(stmt.Condition)
+
+	if err != nil {
+		return err
+	}
+
+	if isTruthy(value) {
+		err := i.execute(stmt.ThenBranch)
+
+		if err != nil {
+			return err
+		}
+	} else if stmt.ElseBranch != nil {
+		err := i.execute(stmt.ElseBranch)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -298,7 +338,40 @@ func (i *Interpreter) VisitVarStmt(stmt *ast.Var) any {
 }
 
 func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
+	for {
+		value, err := i.evaluate(stmt.Condition)
+
+		if err != nil {
+			return err
+		}
+
+		if !isTruthy(value) {
+			break
+		}
+
+		err = i.execute(stmt.Body)
+		if err != nil {
+			if _, ok := err.(*BreakSignal); ok {
+				break
+			}
+
+			if _, ok := err.(*ContinueSignal); ok {
+				continue
+			}
+
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (i *Interpreter) VisitBreakStmt(stmt *ast.Break) any {
+	return &BreakSignal{}
+}
+
+func (i *Interpreter) VisitContinueStmt(stmt *ast.Continue) any {
+	return &ContinueSignal{}
 }
 
 func isTruthy(value any) bool {

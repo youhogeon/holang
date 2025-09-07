@@ -17,6 +17,8 @@ type StmtVisitor interface {
 	VisitReturnStmt(stmt *Return) any
 	VisitVarStmt(stmt *Var) any
 	VisitWhileStmt(stmt *While) any
+	VisitBreakStmt(stmt *Break) any
+	VisitContinueStmt(stmt *Continue) any
 }
 
 type Block struct {
@@ -133,5 +135,27 @@ func (s *While) Accept(visitor StmtVisitor) any {
 }
 
 func (s *While) AcceptString(visitor StmtVisitor) string {
+	return s.Accept(visitor).(string)
+}
+
+type Break struct {
+}
+
+func (s *Break) Accept(visitor StmtVisitor) any {
+	return visitor.VisitBreakStmt(s)
+}
+
+func (s *Break) AcceptString(visitor StmtVisitor) string {
+	return s.Accept(visitor).(string)
+}
+
+type Continue struct {
+}
+
+func (s *Continue) Accept(visitor StmtVisitor) any {
+	return visitor.VisitContinueStmt(s)
+}
+
+func (s *Continue) AcceptString(visitor StmtVisitor) string {
 	return s.Accept(visitor).(string)
 }

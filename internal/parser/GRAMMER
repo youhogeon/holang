@@ -5,18 +5,33 @@ declaration    → varDecl
  
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
  
-statement      → exprStmt
+statement      → block
+               | exprStmt
                | printStmt
-               | block ;
+               | ifStmt
+               | whileStmt
+               | forStmt
+               | breakStmt
+               | continueStmt;
 
 block          → "{" declaration* "}" ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
- 
+ifStmt         → "if" "(" expression ")" statement
+                 ( "else" statement )?   ;
+whileStmt      → "while" "(" expression ")" statement ;
+forStmt        → "for" "("
+                 ( varDecl | exprStmt | ";" ) expression? ";" expression?
+                 ")" statement ;
+breakStmt      → "break" ";" ;
+continueStmt   → "continue" ";" ;
+
 expression     → assignment ;
 assignment     → IDENTIFIER "=" assignment
                | ternary;
-ternary        → equality ("?" expression ":" expression)? ;
+ternary        → logic_or ("?" expression ":" expression)? ;
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → equality ( "and" equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;

@@ -169,6 +169,14 @@ func (p *AstPrinter) VisitWhileStmt(s *While) any {
 	return p.parenthesize("while", s.Condition, s.Body)
 }
 
+func (p *AstPrinter) VisitBreakStmt(s *Break) any {
+	return p.parenthesize("break")
+}
+
+func (p *AstPrinter) VisitContinueStmt(s *Continue) any {
+	return p.parenthesize("continue")
+}
+
 // -----------------------------------------------------------------------------
 // print-utilities
 

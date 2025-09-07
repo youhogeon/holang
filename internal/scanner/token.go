@@ -53,6 +53,8 @@ const (
 	TRUE
 	VAR
 	WHILE
+	BREAK
+	CONTINUE
 
 	// ETC
 	COMMENT
@@ -107,31 +109,35 @@ var tokenNames = map[TokenType]string{
 	VAR:    "VAR",
 	//40
 	WHILE:         "WHILE",
+	BREAK:         "BREAK",
+	CONTINUE:      "CONTINUE",
 	COMMENT:       "COMMENT",
 	MULTI_COMMENT: "MULTI_COMMENT",
 	EOF:           "EOF",
 }
 
 var keywords = map[string]TokenType{
-	"and":     AND,
-	"class":   CLASS,
-	"else":    ELSE,
-	"false":   FALSE,
-	"fun":     FUN,
-	"for":     FOR,
-	"if":      IF,
-	"nil":     NIL,
-	"or":      OR,
-	"print":   PRINT,
-	"return":  RETURN,
-	"super":   SUPER,
-	"this":    THIS,
-	"true":    TRUE,
-	"var":     VAR,
-	"while":   WHILE,
-	"comment": COMMENT,
-	"T":       TRUE,
-	"F":       FALSE,
+	"and":      AND,
+	"class":    CLASS,
+	"else":     ELSE,
+	"false":    FALSE,
+	"fun":      FUN,
+	"for":      FOR,
+	"if":       IF,
+	"nil":      NIL,
+	"or":       OR,
+	"print":    PRINT,
+	"return":   RETURN,
+	"super":    SUPER,
+	"this":     THIS,
+	"true":     TRUE,
+	"var":      VAR,
+	"while":    WHILE,
+	"comment":  COMMENT,
+	"T":        TRUE,
+	"F":        FALSE,
+	"break":    BREAK,
+	"continue": CONTINUE,
 }
 
 func (t *TokenType) String() string {

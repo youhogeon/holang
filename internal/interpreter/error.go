@@ -19,3 +19,15 @@ func NewRuntimeErrorWithLog(message string) *RuntimeError {
 func (e *RuntimeError) Error() string {
 	return e.Message
 }
+
+type BreakSignal struct{}
+
+func (e *BreakSignal) Error() string {
+	return ""
+}
+
+type ContinueSignal struct{}
+
+func (e *ContinueSignal) Error() string {
+	return ""
+}
