@@ -6,18 +6,28 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 2 {
-		log.Fatal("Usage: holang [file]", log.A("args", os.Args))
+	// Simple arg parsing: --debug optional + optional file
+	args := os.Args[1:]
+	var fileName string
 
+	filtered := make([]string, 0, len(args))
+	for _, a := range args {
+		if a == "--debug" {
+			log.EnableDebug()
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+
+	if len(filtered) > 1 { // too many non-flag args
+		log.Fatal("Usage: holang [--debug] [file]", log.A("args", os.Args))
 		return
 	}
 
-	if len(os.Args) == 2 {
-		fileName := os.Args[1]
+	if len(filtered) == 1 {
+		fileName = filtered[0]
 		log.Info("HOLANG with file", log.S("file", fileName))
-
 		runFile(fileName)
-
 		return
 	}
 

@@ -10,7 +10,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var logger *zap.Logger
+var (
+	logger   *zap.Logger
+	logLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
+)
 
 type Field = zap.Field
 
@@ -43,8 +46,8 @@ func init() {
 	fileEncoder := zapcore.NewJSONEncoder(encCfg2)
 
 	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEnc, zapcore.AddSync(os.Stdout), zap.DebugLevel),
-		zapcore.NewCore(fileEncoder, zapcore.AddSync(f), zap.DebugLevel),
+		zapcore.NewCore(consoleEnc, zapcore.AddSync(os.Stdout), logLevel),
+		zapcore.NewCore(fileEncoder, zapcore.AddSync(f), logLevel),
 	)
 
 	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
@@ -70,7 +73,7 @@ func DebugIfEnabled(msg string, fieldsFunc func() []Field) {
 func InfoIfEnabled(msg string, fieldsFunc func() []Field) {
 	if logger.Core().Enabled(zap.InfoLevel) {
 		fields := fieldsFunc()
-		logger.Debug(msg, fields...)
+		logger.Info(msg, fields...)
 	}
 }
 
@@ -127,6 +130,12 @@ func ErrorWith(uid int64, msg string, fields ...Field) {
 func Sync() error {
 	return logger.Sync()
 }
+
+// EnableDebug switches log level to debug at runtime; call early (e.g., after parsing --debug flag).
+func EnableDebug() { logLevel.SetLevel(zap.DebugLevel) }
+
+// DisableDebug switches log level back to info.
+func DisableDebug() { logLevel.SetLevel(zap.InfoLevel) }
 
 func Common(botId string, uid int64, code string) []Field {
 	return []Field{
