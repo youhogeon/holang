@@ -2,9 +2,26 @@
 22세기를 선도하는 언어
 
 ## 실행
-```sh
-./dist/holang
-```
+* REPL
+    ```sh
+    # Windows
+    ./dist/holang
+    # Mac
+    ./dist/holang_darwin_amd64
+    ./dist/holang_darwin_arm64
+    # Linux
+    ./dist/holang_linux_amd64
+    ```
+* Script
+    ```sh
+    # Windows
+    ./dist/holang ./sample/gugudan
+    # Mac
+    ./dist/holang_darwin_amd64 ./sample/gugudan
+    ./dist/holang_darwin_arm64 ./sample/gugudan
+    # Linux
+    ./dist/holang_linux_amd64 ./sample/gugudan
+    ```
 
 ## 예제
 ```holang
