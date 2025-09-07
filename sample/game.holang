@@ -1,0 +1,286 @@
+// ===== ANSI 유틸 =====
+var ESC = "\u001b[";
+
+fun color(code, s) { return ESC + code + "m" + s + ESC + "0m"; }
+fun bold(s)   { return color("1", s); }
+fun dim(s)    { return color("2", s); }
+fun ul(s)     { return color("4", s); }
+fun red(s)    { return color("31", s); }
+fun green(s)  { return color("32", s); }
+fun yellow(s) { return color("33", s); }
+fun blue(s)   { return color("34", s); }
+fun mag(s)    { return color("35", s); }
+fun cyan(s)   { return color("36", s); }
+fun gray(s)   { return color("90", s); }
+
+fun println2(a, b) { print(a); print(b); }
+fun readChoice(prompt) { var s = input(prompt); return s; }
+
+// HP 바: current/max → "[####.....]" (너비 고정)
+var BAR_W = 20;
+fun hpBar(cur, max) {
+  var filled = (cur * BAR_W) / max; // 실수여도 while로 바닥 처리
+  var i = 0;
+  var left = "[";
+  while (i < filled) { left = left + "#"; i = i + 1; }
+  while (i < BAR_W) { left = left + "."; i = i + 1; }
+  left = left + "]";
+  return left;
+}
+
+// ===== 멤버십 (or 사용) =====
+fun in3(x, a, b, c) {
+  if ((x == a) or (x == b) or (x == c)) { return true; }
+  return false;
+}
+fun inDiff(x) {
+  if ((x == "easy") or (x == "normal") or (x == "hard")) { return true; }
+  return false;
+}
+
+// ===== RNG =====
+class RNG {
+  init(seed) { this.state = seed; }
+  next() {
+    this.state = this.state * 0.1234567 + 0.9876543;
+    if (this.state >= 1) { this.state = this.state - 1; }
+    if (this.state < 0)  { this.state = this.state + 1; }
+    return this.state;
+  }
+}
+
+// ===== 캐릭터 기반 =====
+class Character {
+  init(name, hp, atk, def) {
+    this.name = name; this.hp = hp; this.atk = atk; this.def = def; this.maxHp = hp;
+  }
+  getName(){ return this.name; }
+  isAlive(){ return this.hp > 0; }
+
+  header() {
+    print(bold(cyan(this.name)));
+    print(gray(hpBar(this.hp, this.maxHp)));
+    print(gray("HP")); print(this.hp);
+  }
+
+  takeDamage(raw) {
+    var dmg = raw - this.def;
+    if (dmg < 0) { dmg = 0; }
+    this.hp = this.hp - dmg;
+
+    print(red("DMG"));
+    print(dmg);
+    print(gray("HP"));  print(this.hp);
+
+    return dmg;
+  }
+
+  attack(target, rng) {
+    println2(bold(yellow("ATTACK")), cyan(this.name));
+    var miss = rng.next();
+    if (miss < 0.1) { print(gray("MISS")); return 0; }
+
+    var base = this.atk;
+    var crit = rng.next();
+    if (crit < 0.15) { print(mag("CRIT")); base = base * 2; }
+
+    return target.takeDamage(base);
+  }
+
+  // 기본 스킬(서브에서 보통 오버라이드)
+  skill(target, rng) {
+    println2(bold(blue("SKILL")), cyan(this.name));
+    var extra = this.atk * 0.6;
+    return target.takeDamage(this.atk + extra);
+  }
+
+  onTurnStart(rng) { return 0; }
+}
+
+// ===== 플레이어 =====
+class Player < Character {
+  init(name, hp, atk, def) { super.init(name, hp, atk, def); }
+
+  skill(target, rng) {
+    println2(bold(blue("SKILL: Focus")), cyan(this.name));
+    var base = this.atk * 1.4 + 2;
+
+    var savedDef = target.def;
+    target.def = target.def * 0.5;
+    var dealt = target.takeDamage(base);
+    target.def = savedDef;
+
+    return dealt;
+  }
+}
+
+// ===== 보스 =====
+class Boss < Character {
+  init(name, hp, atk, def) {
+    super.init(name, hp, atk, def);
+    this.rage = 0;
+  }
+
+  onTurnStart(rng) {
+    if (this.rage < 10) { this.rage = this.rage + 1; }
+    println2(gray("RAGE"), this.rage);
+    return this.rage;
+  }
+
+  attack(target, rng) {
+    println2(bold(yellow("ATTACK")), red(this.name));
+    var miss = rng.next();
+    if (miss < 0.07) { print(gray("MISS")); return 0; }
+    var base = this.atk + this.rage * 0.2;
+    var crit = rng.next();
+    if (crit < 0.2) { print(mag("CRIT")); base = base * 1.5; }
+    return target.takeDamage(base);
+  }
+
+  skill(target, rng) {
+    println2(bold(blue("SKILL: ShadowFlare")), red(this.name));
+    var base = this.atk * 1.2 + 4 + this.rage * 0.6;
+
+    var savedDef = target.def;
+    target.def = target.def * 0.3; // 마법 피해: 방어 30%만 적용
+    var dealt = target.takeDamage(base);
+    target.def = savedDef;
+
+    println2(gray("RECOIL"), 1);
+    this.takeDamage(1);
+    return dealt;
+  }
+}
+
+// ===== 난이도 설정 =====
+fun setupByDifficulty(diff) {
+  if (diff == "easy")  { return "E"; }
+  if (diff == "hard")  { return "H"; }
+  return "N";
+}
+
+// ===== 전투 =====
+fun runBattle(player, boss, rng, maxTurns) {
+  print(bold(green("=== BATTLE START ===")));
+  print(cyan("PLAYER")); print(player.getName());
+  print(red("BOSS"));   print(boss.getName());
+
+  var turn = 1;
+  while (player.isAlive() and boss.isAlive()) {
+    println2(bold(green("TURN")), turn);
+
+    // 상태 헤더
+    player.header();
+    boss.header();
+
+    // 보스 턴 시작 훅
+    boss.onTurnStart(rng);
+
+    // === 플레이어 선택 ===
+    print(bold(cyan("YOUR ACTION? (a=attack, s=skill, h=help)")));
+    var act = readChoice("> ");
+    while (!((act == "a") or (act == "s") or (act == "h"))) {
+      print(red("INVALID"));
+      act = readChoice("> ");
+    }
+
+    if (act == "h") {
+      print(bold(blue("HELP")));
+      print(yellow("a")); print(gray("basic attack 90% hit, 15% crit x2"));
+      print(blue("s"));   print(gray("focus skill ignores half of enemy DEF"));
+      act = readChoice("> ");
+      while (!((act == "a") or (act == "s") or (act == "h"))) {
+        print(red("INVALID"));
+        act = readChoice("> ");
+      }
+    }
+
+    // === 플레이어 턴 ===
+    println2(gray("TURN OF"), cyan(player.getName()));
+    if (act == "a") {
+      player.attack(boss, rng);
+    } else {
+      player.skill(boss, rng);
+    }
+    if (!boss.isAlive()) {
+      println2(bold(green("WINNER")), cyan(player.getName()));
+      return "PLAYER";
+    }
+
+    // === 보스 턴 ===
+    println2(gray("TURN OF"), red(boss.getName()));
+    var pick = rng.next();
+    if (pick < 0.55) {
+      boss.attack(player, rng);
+    } else {
+      boss.skill(player, rng);
+    }
+    if (!player.isAlive()) {
+      println2(bold(red("WINNER")), red(boss.getName()));
+      return "BOSS";
+    }
+
+    turn = turn + 1;
+    if (turn > maxTurns) {
+      print(bold(yellow("DRAW")));
+      return "DRAW";
+    }
+  }
+  return "DRAW";
+}
+
+// ===== 안전 시드 =====
+fun seedFromClock() {
+  var t = clock();
+  if (!(t == t)) { t = 0.3141592; }   // NaN 방지
+  if (t < 0) { t = 0 - t; }           // 음수 → 양수
+  if (t == 0) { t = 0.1234567; }      // 0 회피
+  while (t >= 1) { t = t / 10; }      // 빠른 정규화
+  if (t <= 0) { t = 0.000001; }
+  return t;
+}
+
+// ===== 메인 =====
+fun main() {
+  print(bold(cyan("DIFFICULTY? (easy/normal/hard)")));
+  var diff = readChoice("> ");
+  while (!inDiff(diff)) {
+    print(red("INVALID"));
+    diff = readChoice("> ");
+  }
+  var mode = setupByDifficulty(diff);
+
+  var pHp = 60; var pAtk = 12; var pDef = 3;
+  var bHp = 70; var bAtk = 11; var bDef = 2;
+  var limit = 50;
+
+  if (mode == "E") {
+    pHp = 70; pAtk = 13; pDef = 4;
+    bHp = 60; bAtk = 10; bDef = 2;
+    limit = 40;
+  }
+  if (mode == "H") {
+    pHp = 55; pAtk = 11; pDef = 2;
+    bHp = 85; bAtk = 12; bDef = 3;
+    limit = 60;
+  }
+
+  print(bold(cyan("YOUR NAME?")));
+  var pname = readChoice("> ");
+  if (pname == "") { pname = "Hero"; }
+
+  var rng = RNG(seedFromClock());
+  var you = Player(pname, pHp, pAtk, pDef);
+  var boss = Boss("Abyss Lord", bHp, bAtk, bDef);
+
+  print(bold(green("READY")));
+  println2(gray("PLAYER HP"), pHp);
+  println2(gray("BOSS HP"), bHp);
+
+  var res = runBattle(you, boss, rng, limit);
+
+  print(bold(cyan("RESULT")));
+  print(res);
+}
+
+main();
