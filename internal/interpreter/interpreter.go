@@ -23,6 +23,9 @@ func NewInterpreter() *Interpreter {
 	globals.Define("print", &BuiltInFnPrint{})
 	globals.Define("input", &BuiltInFnInput{})
 	globals.Define("clock", &BuiltInFnClock{})
+	globals.Define("str", &BuiltInFnToString{})
+	globals.Define("int", &BuiltInFnToInt{})
+	globals.Define("foat", &BuiltInFnToFloat{})
 
 	return &Interpreter{
 		env:     globals,

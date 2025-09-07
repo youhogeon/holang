@@ -3,6 +3,7 @@ package interpreter
 import (
 	"fmt"
 	"internal/ast"
+	"strconv"
 	"time"
 )
 
@@ -168,4 +169,34 @@ func (b *BuiltInFnClock) Arity() int {
 
 func (b *BuiltInFnClock) Call(interpreter *Interpreter, arguments []any) (any, error) {
 	return int64(time.Now().UnixNano() / 1e9), nil
+}
+
+type BuiltInFnToString struct{}
+
+func (b *BuiltInFnToString) Arity() int {
+	return 1
+}
+
+func (b *BuiltInFnToString) Call(interpreter *Interpreter, arguments []any) (any, error) {
+	return fmt.Sprint(arguments[0]), nil
+}
+
+type BuiltInFnToInt struct{}
+
+func (b *BuiltInFnToInt) Arity() int {
+	return 1
+}
+
+func (b *BuiltInFnToInt) Call(interpreter *Interpreter, arguments []any) (any, error) {
+	return strconv.ParseInt(fmt.Sprint(arguments[0]), 10, 64)
+}
+
+type BuiltInFnToFloat struct{}
+
+func (b *BuiltInFnToFloat) Arity() int {
+	return 1
+}
+
+func (b *BuiltInFnToFloat) Call(interpreter *Interpreter, arguments []any) (any, error) {
+	return strconv.ParseFloat(fmt.Sprint(arguments[0]), 64)
 }
