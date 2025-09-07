@@ -20,6 +20,8 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globals := NewEnvironment(nil)
 
+	globals.Define("print", &BuiltInFnPrint{})
+	globals.Define("input", &BuiltInFnInput{})
 	globals.Define("clock", &BuiltInFnClock{})
 
 	return &Interpreter{
