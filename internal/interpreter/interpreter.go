@@ -12,12 +12,18 @@ type valueAndError struct {
 }
 
 type Interpreter struct {
-	env *Environment
+	env     *Environment
+	globals *Environment
 }
 
 func NewInterpreter() *Interpreter {
+	globals := NewEnvironment(nil)
+
+	globals.Define("clock", &BuiltInFnClock{})
+
 	return &Interpreter{
-		env: NewEnvironment(nil),
+		env:     globals,
+		globals: globals,
 	}
 }
 
@@ -147,7 +153,32 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 }
 
 func (i *Interpreter) VisitCallExpr(expr *ast.Call) any {
-	return &valueAndError{nil, nil}
+	callee, err := i.evaluate(expr.Callee)
+	if err != nil {
+		return &valueAndError{nil, err}
+	}
+
+	var arguments []any
+	for _, argExpr := range expr.Arguments {
+		arg, err := i.evaluate(argExpr)
+		if err != nil {
+			return &valueAndError{nil, err}
+		}
+		arguments = append(arguments, arg)
+	}
+
+	if function, ok := callee.(Callable); ok {
+		if len(arguments) != function.Arity() {
+			return &valueAndError{nil, NewRuntimeErrorWithLog(fmt.Sprintf("expected %d arguments but got %d", function.Arity(), len(arguments)))}
+		}
+
+		value, err := function.Call(i, arguments)
+
+		return &valueAndError{value, err}
+	}
+
+	return &valueAndError{nil, NewRuntimeErrorWithLog("can only call functions and classes")}
+
 }
 
 func (i *Interpreter) VisitGetExpr(expr *ast.Get) any {
@@ -276,6 +307,9 @@ func (i *Interpreter) VisitExpressionStmt(stmt *ast.Expression) any {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt *ast.Function) any {
+	function := &Function{declaration: stmt, clousure: i.env}
+	i.env.Define(stmt.Name.Lexeme, function)
+
 	return nil
 }
 
@@ -316,7 +350,13 @@ func (i *Interpreter) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (i *Interpreter) VisitReturnStmt(stmt *ast.Return) any {
-	return nil
+	value, err := i.evaluate(stmt.Value)
+
+	if err != nil {
+		return err
+	}
+
+	return &returnSignal{value: value}
 }
 
 func (i *Interpreter) VisitVarStmt(stmt *ast.Var) any {
@@ -351,11 +391,11 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
 
 		err = i.execute(stmt.Body)
 		if err != nil {
-			if _, ok := err.(*BreakSignal); ok {
+			if _, ok := err.(*breakSignal); ok {
 				break
 			}
 
-			if _, ok := err.(*ContinueSignal); ok {
+			if _, ok := err.(*continueSignal); ok {
 				continue
 			}
 
@@ -367,11 +407,11 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
 }
 
 func (i *Interpreter) VisitBreakStmt(stmt *ast.Break) any {
-	return &BreakSignal{}
+	return &breakSignal{}
 }
 
 func (i *Interpreter) VisitContinueStmt(stmt *ast.Continue) any {
-	return &ContinueSignal{}
+	return &continueSignal{}
 }
 
 func isTruthy(value any) bool {

@@ -20,14 +20,22 @@ func (e *RuntimeError) Error() string {
 	return e.Message
 }
 
-type BreakSignal struct{}
+type breakSignal struct{}
 
-func (e *BreakSignal) Error() string {
+func (e *breakSignal) Error() string {
 	return ""
 }
 
-type ContinueSignal struct{}
+type continueSignal struct{}
 
-func (e *ContinueSignal) Error() string {
+func (e *continueSignal) Error() string {
+	return ""
+}
+
+type returnSignal struct {
+	value any
+}
+
+func (e *returnSignal) Error() string {
 	return ""
 }
