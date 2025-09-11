@@ -3,11 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"internal/ast"
-	_interpreter "internal/interpreter"
-	"internal/parser"
-	"internal/resolver"
-	"internal/scanner"
 	"internal/util/log"
 	"os"
 )
@@ -21,17 +16,16 @@ func runFile(fileName string) {
 		}
 	}
 
-	run(fileBody, nil)
+	run(fileBody)
 }
 
 func runLoop() {
 	inputScanner := bufio.NewScanner(os.Stdin)
-	interpreter := _interpreter.NewInterpreter()
 
 	log.StdOut("> ")
 	for inputScanner.Scan() {
 		line := inputScanner.Bytes()
-		run(line, interpreter)
+		run(line)
 		log.StdOut("> ")
 	}
 
@@ -40,7 +34,7 @@ func runLoop() {
 	}
 }
 
-func run(source []byte, interpreter *_interpreter.Interpreter) {
+func run(source []byte) {
 	sourceStr := string(source)
 
 	log.InfoIfEnabled("Run source", func() []log.Field {
@@ -53,44 +47,4 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		return []log.Field{log.S("source", _sourceStr)}
 	})
 
-	lex := scanner.NewScanner(sourceStr)
-	tokens, errs := lex.ScanTokens()
-
-	log.Debug("Scan complete", log.A("tokens", tokens), log.A("errors", errs))
-
-	if len(errs) > 0 {
-		return
-	}
-
-	p := parser.NewParser(tokens)
-	printer := ast.NewAstPrinter()
-
-	statements, errs := p.Parse()
-
-	log.Debug("Parse complete", log.A("ast", statements), log.A("errors", errs))
-
-	for _, stmt := range statements {
-		log.Debug("AST", log.S("astStr", printer.PrintStmt(stmt)))
-	}
-
-	if len(errs) > 0 {
-		return
-	}
-
-	if interpreter == nil {
-		interpreter = _interpreter.NewInterpreter()
-	}
-
-	resolver := resolver.NewResolver(interpreter)
-	err := resolver.Resolve(statements)
-
-	log.Debug("Resolve complete", log.E(err))
-
-	if err != nil {
-		return
-	}
-
-	err = interpreter.Interpret(statements)
-
-	log.Debug("Interpret complete", log.E(err))
 }
