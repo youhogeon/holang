@@ -70,43 +70,43 @@ func (vm *VM) OP_NIL() InterpretResult {
 }
 
 func (vm *VM) OP_CONSTANT_M1() InterpretResult {
-	vm.push(-1)
+	vm.push(int64(-1))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_0() InterpretResult {
-	vm.push(0)
+	vm.push(int64(0))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_1() InterpretResult {
-	vm.push(1)
+	vm.push(int64(1))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_2() InterpretResult {
-	vm.push(2)
+	vm.push(int64(2))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_3() InterpretResult {
-	vm.push(3)
+	vm.push(int64(3))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_4() InterpretResult {
-	vm.push(4)
+	vm.push(int64(4))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_CONSTANT_5() InterpretResult {
-	vm.push(5)
+	vm.push(int64(5))
 
 	return InterpretResultOK
 }
