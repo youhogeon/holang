@@ -3,9 +3,11 @@ go 1.24.0
 use (
 	./cmd/main
 	./internal/ast
+	./internal/bytecode
+	./internal/codegen
 	./internal/interpreter
 	./internal/parser
-	./internal/resolver
 	./internal/scanner
 	./internal/util
+	./internal/vm
 )

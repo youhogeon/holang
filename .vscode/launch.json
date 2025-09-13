@@ -7,7 +7,10 @@
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/main",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "args": [
+        "--debug",
+      ]
     },
     {
       "name": "cmd/main with file",
@@ -16,7 +19,8 @@
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/main",
       "args": [
-        "${input:path}"
+        "--debug",
+        "${input:path}",
       ]
     }
   ],

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"internal/ast"
 	"internal/scanner"
+	"internal/util"
 )
 
 type valueAndError struct {
@@ -238,11 +239,11 @@ func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) any {
 	}
 
 	if expr.Operator.TokenType == scanner.OR {
-		if isTruthy(left) {
+		if util.IsTruthy(left) {
 			return &valueAndError{left, nil}
 		}
 	} else {
-		if !isTruthy(left) {
+		if !util.IsTruthy(left) {
 			return &valueAndError{left, nil}
 		}
 	}
@@ -316,7 +317,7 @@ func (i *Interpreter) VisitTernaryExpr(expr *ast.Ternary) any {
 		return &valueAndError{nil, err}
 	}
 
-	if isTruthy(left) {
+	if util.IsTruthy(left) {
 		v, err := i.evaluate(expr.Mid)
 
 		return &valueAndError{v, err}
@@ -342,7 +343,7 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 
 		return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number")}
 	case scanner.BANG:
-		return &valueAndError{!isTruthy(right), nil}
+		return &valueAndError{!util.IsTruthy(right), nil}
 	}
 
 	return &valueAndError{nil, NewRuntimeErrorWithLog("unknown unary operator")}
@@ -449,7 +450,7 @@ func (i *Interpreter) VisitIfStmt(stmt *ast.If) any {
 		return err
 	}
 
-	if isTruthy(value) {
+	if util.IsTruthy(value) {
 		err := i.execute(stmt.ThenBranch)
 
 		if err != nil {
@@ -518,7 +519,7 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
 			return err
 		}
 
-		if !isTruthy(value) {
+		if !util.IsTruthy(value) {
 			break
 		}
 
@@ -545,18 +546,6 @@ func (i *Interpreter) VisitBreakStmt(stmt *ast.Break) any {
 
 func (i *Interpreter) VisitContinueStmt(stmt *ast.Continue) any {
 	return &continueSignal{}
-}
-
-func isTruthy(value any) bool {
-	if value == nil {
-		return false
-	}
-
-	if b, ok := value.(bool); ok {
-		return b
-	}
-
-	return true
 }
 
 func binaryNumericOp(left, right any, opInt func(int64, int64) any, opFloat func(float64, float64) any) *valueAndError {

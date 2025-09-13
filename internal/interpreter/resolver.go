@@ -1,21 +1,20 @@
-package resolver
+package interpreter
 
 import (
 	"errors"
 	"internal/ast"
-	"internal/interpreter"
 	"internal/scanner"
 	"internal/util/log"
 )
 
 type Resolver struct {
-	interpreter  *interpreter.Interpreter
+	interpreter  *Interpreter
 	scopes       []map[string]bool
 	currentFunc  FunctionType
 	currentClass ClassType
 }
 
-func NewResolver(interpreter *interpreter.Interpreter) *Resolver {
+func NewResolver(interpreter *Interpreter) *Resolver {
 	return &Resolver{
 		interpreter: interpreter,
 		scopes:      make([]map[string]bool, 0),

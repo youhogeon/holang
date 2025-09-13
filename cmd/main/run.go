@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"internal/ast"
-	_interpreter "internal/interpreter"
+	"internal/bytecode"
+	"internal/codegen"
 	"internal/parser"
-	"internal/resolver"
 	"internal/scanner"
 	"internal/util/log"
+	"internal/vm"
 	"os"
 )
 
@@ -21,17 +22,16 @@ func runFile(fileName string) {
 		}
 	}
 
-	run(fileBody, nil)
+	run(fileBody)
 }
 
 func runLoop() {
 	inputScanner := bufio.NewScanner(os.Stdin)
-	interpreter := _interpreter.NewInterpreter()
 
 	log.StdOut("> ")
 	for inputScanner.Scan() {
 		line := inputScanner.Bytes()
-		run(line, interpreter)
+		run(line)
 		log.StdOut("> ")
 	}
 
@@ -40,7 +40,7 @@ func runLoop() {
 	}
 }
 
-func run(source []byte, interpreter *_interpreter.Interpreter) {
+func run(source []byte) {
 	sourceStr := string(source)
 
 	log.InfoIfEnabled("Run source", func() []log.Field {
@@ -53,8 +53,11 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		return []log.Field{log.S("source", _sourceStr)}
 	})
 
-	lex := scanner.NewScanner(sourceStr)
-	tokens, errs := lex.ScanTokens()
+	// ================================================================
+	// Scan
+	// ================================================================
+	scanner := scanner.NewScanner(sourceStr)
+	tokens, errs := scanner.ScanTokens()
 
 	log.Debug("Scan complete", log.A("tokens", tokens), log.A("errors", errs))
 
@@ -62,6 +65,9 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		return
 	}
 
+	// ================================================================
+	// Parse
+	// ================================================================
 	p := parser.NewParser(tokens)
 	printer := ast.NewAstPrinter()
 
@@ -77,20 +83,29 @@ func run(source []byte, interpreter *_interpreter.Interpreter) {
 		return
 	}
 
-	if interpreter == nil {
-		interpreter = _interpreter.NewInterpreter()
-	}
+	// ================================================================
+	// Codegen
+	// ================================================================
 
-	resolver := resolver.NewResolver(interpreter)
-	err := resolver.Resolve(statements)
+	ch := bytecode.NewChunk()
+	em := codegen.NewChunkEmitter(ch)
+	gen := codegen.NewCodeGenerator(em)
 
-	log.Debug("Resolve complete", log.E(err))
+	if err := gen.Generate(statements); err != nil {
+		log.Error("Codegen error", log.E(err))
 
-	if err != nil {
 		return
 	}
 
-	err = interpreter.Interpret(statements)
+	disassemble := ch.Disassemble()
+	log.Debug("Codegen complete", log.A("bytecode", disassemble))
 
-	log.Debug("Interpret complete", log.E(err))
+	// ================================================================
+	// Run
+	// ================================================================
+	vm := vm.NewVM()
+	result := vm.Interpret(ch)
+
+	log.Info("VM interpret finished", log.A("result", result))
+
 }
