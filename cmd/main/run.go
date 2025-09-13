@@ -6,6 +6,7 @@ import (
 	"internal/ast"
 	"internal/bytecode"
 	"internal/codegen"
+	interpreter_ "internal/interpreter"
 	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
@@ -22,16 +23,17 @@ func runFile(fileName string) {
 		}
 	}
 
-	run(fileBody)
+	run(fileBody, nil)
 }
 
 func runLoop() {
 	inputScanner := bufio.NewScanner(os.Stdin)
+	interpreter := interpreter_.NewInterpreter()
 
 	log.StdOut("> ")
 	for inputScanner.Scan() {
 		line := inputScanner.Bytes()
-		run(line)
+		run(line, interpreter)
 		log.StdOut("> ")
 	}
 
@@ -40,7 +42,7 @@ func runLoop() {
 	}
 }
 
-func run(source []byte) {
+func run(source []byte, interpreter *interpreter_.Interpreter) {
 	sourceStr := string(source)
 
 	log.InfoIfEnabled("Run source", func() []log.Field {
@@ -81,6 +83,26 @@ func run(source []byte) {
 
 	if len(errs) > 0 {
 		return
+	}
+
+	// ================================================================
+	// Resolve + Interpret (HoLang1)
+	// ================================================================
+	if interpreter == nil {
+		interpreter = interpreter_.NewInterpreter()
+	}
+
+	resolver := interpreter_.NewResolver(interpreter)
+	err := resolver.Resolve(statements)
+
+	log.Debug("Resolve complete", log.E(err))
+
+	if err == nil {
+		err = interpreter.Interpret(statements)
+
+		log.Debug("Interpret complete", log.E(err))
+	} else {
+		log.Error("Resolve error", log.E(err))
 	}
 
 	// ================================================================
