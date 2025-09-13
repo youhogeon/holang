@@ -26,9 +26,10 @@ const (
 	OP_CONSTANT_4
 	OP_CONSTANT_5
 
-	// UNARY
+	// UNARY, TERNARY
 	OP_NEGATE
 	OP_NOT
+	OP_TERNARY
 
 	// BINARY
 	OP_ADD
@@ -58,6 +59,7 @@ var strings = map[OpCode]string{
 	OP_CONSTANT_5:    "OP_CONSTANT_5",
 	OP_NEGATE:        "OP_NEGATE",
 	OP_NOT:           "OP_NOT",
+	OP_TERNARY:       "OP_TERNARY",
 	OP_ADD:           "OP_ADD",
 	OP_SUBTRACT:      "OP_SUBTRACT",
 	OP_MULTIPLY:      "OP_MULTIPLY",

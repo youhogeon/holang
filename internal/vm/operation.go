@@ -22,9 +22,10 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_CONSTANT_4,
 	(*VM).OP_CONSTANT_5,
 
-	// UNARY
+	// UNARY, TERNARY
 	(*VM).OP_NEGATE,
 	(*VM).OP_NOT,
+	// (*VM).OP_TERNARY,
 
 	// BINARY
 	(*VM).OP_ADD,
@@ -118,7 +119,7 @@ func (vm *VM) OP_CONSTANT_5() InterpretResult {
 }
 
 // ================================================================
-// UNARY
+// UNARY, TRINARY
 // ================================================================
 
 func (vm *VM) OP_NEGATE() InterpretResult {
