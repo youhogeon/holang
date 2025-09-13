@@ -23,6 +23,7 @@ type StmtVisitor interface {
 
 type Block struct {
 	Statements []Stmt
+	Offset     Offset
 }
 
 func (s *Block) Accept(visitor StmtVisitor) any {
@@ -37,6 +38,7 @@ type Class struct {
 	Name       *scanner.Token
 	Superclass *Variable
 	Methods    []*Function
+	Offset     Offset
 }
 
 func (c *Class) Accept(visitor StmtVisitor) any {
@@ -49,6 +51,7 @@ func (c *Class) AcceptString(visitor StmtVisitor) string {
 
 type Expression struct {
 	Expression Expr
+	Offset     Offset
 }
 
 func (s *Expression) Accept(visitor StmtVisitor) any {
@@ -63,6 +66,7 @@ type Function struct {
 	Name   *scanner.Token
 	Params []*scanner.Token
 	Body   []Stmt
+	Offset Offset
 }
 
 func (f *Function) Accept(visitor StmtVisitor) any {
@@ -77,6 +81,7 @@ type If struct {
 	Condition  Expr
 	ThenBranch Stmt
 	ElseBranch Stmt
+	Offset     Offset
 }
 
 func (s *If) Accept(visitor StmtVisitor) any {
@@ -89,6 +94,7 @@ func (s *If) AcceptString(visitor StmtVisitor) string {
 
 type Print struct {
 	Expression Expr
+	Offset     Offset
 }
 
 func (s *Print) Accept(visitor StmtVisitor) any {
@@ -102,6 +108,7 @@ func (s *Print) AcceptString(visitor StmtVisitor) string {
 type Return struct {
 	Keyword *scanner.Token
 	Value   Expr
+	Offset  Offset
 }
 
 func (s *Return) Accept(visitor StmtVisitor) any {
@@ -115,6 +122,7 @@ func (s *Return) AcceptString(visitor StmtVisitor) string {
 type Var struct {
 	Name        *scanner.Token
 	Initializer Expr
+	Offset      Offset
 }
 
 func (s *Var) Accept(visitor StmtVisitor) any {
@@ -128,6 +136,7 @@ func (s *Var) AcceptString(visitor StmtVisitor) string {
 type While struct {
 	Condition Expr
 	Body      Stmt
+	Offset    Offset
 }
 
 func (s *While) Accept(visitor StmtVisitor) any {
@@ -139,6 +148,7 @@ func (s *While) AcceptString(visitor StmtVisitor) string {
 }
 
 type Break struct {
+	Offset Offset
 }
 
 func (s *Break) Accept(visitor StmtVisitor) any {
@@ -150,6 +160,7 @@ func (s *Break) AcceptString(visitor StmtVisitor) string {
 }
 
 type Continue struct {
+	Offset Offset
 }
 
 func (s *Continue) Accept(visitor StmtVisitor) any {

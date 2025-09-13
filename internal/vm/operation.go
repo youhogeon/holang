@@ -33,7 +33,7 @@ func (vm *VM) OP_NEGATE() InterpretResult {
 	value := vm.pop()
 
 	switch v := value.(type) {
-	case int:
+	case int64:
 		vm.push(-v)
 	case float64:
 		vm.push(-v)
@@ -51,14 +51,14 @@ func (vm *VM) OP_ADD() InterpretResult {
 	a := vm.pop()
 
 	switch a.(type) {
-	case int:
+	case int64:
 		switch v := b.(type) {
-		case int:
-			vm.push(a.(int) + v)
+		case int64:
+			vm.push(a.(int64) + v)
 		case float64:
-			vm.push(float64(a.(int)) + v)
+			vm.push(float64(a.(int64)) + v)
 		case string:
-			vm.push(fmt.Sprintf("%d%s", a.(int), v))
+			vm.push(fmt.Sprintf("%d%s", a.(int64), v))
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
@@ -66,7 +66,7 @@ func (vm *VM) OP_ADD() InterpretResult {
 		}
 	case float64:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			vm.push(a.(float64) + float64(v))
 		case float64:
 			vm.push(a.(float64) + v)
@@ -79,7 +79,7 @@ func (vm *VM) OP_ADD() InterpretResult {
 		}
 	case string:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			vm.push(fmt.Sprintf("%s%d", a.(string), v))
 		case float64:
 			vm.push(fmt.Sprintf("%s%f", a.(string), v))
@@ -104,12 +104,12 @@ func (vm *VM) OP_SUBTRACT() InterpretResult {
 	a := vm.pop()
 
 	switch a.(type) {
-	case int:
+	case int64:
 		switch v := b.(type) {
-		case int:
-			vm.push(a.(int) - v)
+		case int64:
+			vm.push(a.(int64) - v)
 		case float64:
-			vm.push(float64(a.(int)) - v)
+			vm.push(float64(a.(int64)) - v)
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
@@ -117,7 +117,7 @@ func (vm *VM) OP_SUBTRACT() InterpretResult {
 		}
 	case float64:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			vm.push(a.(float64) - float64(v))
 		case float64:
 			vm.push(a.(float64) - v)
@@ -140,12 +140,12 @@ func (vm *VM) OP_MULTIPLY() InterpretResult {
 	a := vm.pop()
 
 	switch a.(type) {
-	case int:
+	case int64:
 		switch v := b.(type) {
-		case int:
-			vm.push(a.(int) * v)
+		case int64:
+			vm.push(a.(int64) * v)
 		case float64:
-			vm.push(float64(a.(int)) * v)
+			vm.push(float64(a.(int64)) * v)
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
@@ -153,7 +153,7 @@ func (vm *VM) OP_MULTIPLY() InterpretResult {
 		}
 	case float64:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			vm.push(a.(float64) * float64(v))
 		case float64:
 			vm.push(a.(float64) * v)
@@ -176,22 +176,22 @@ func (vm *VM) OP_DIVIDE() InterpretResult {
 	a := vm.pop()
 
 	switch a.(type) {
-	case int:
+	case int64:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			if v == 0 {
 				log.Error("Division by zero", log.A("a", a), log.A("b", b))
 
 				return InterpretResultRuntimeError
 			}
-			vm.push(a.(int) / v)
+			vm.push(a.(int64) / v)
 		case float64:
 			if v == 0.0 {
 				log.Error("Division by zero", log.A("a", a), log.A("b", b))
 
 				return InterpretResultRuntimeError
 			}
-			vm.push(float64(a.(int)) / v)
+			vm.push(float64(a.(int64)) / v)
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
@@ -199,7 +199,7 @@ func (vm *VM) OP_DIVIDE() InterpretResult {
 		}
 	case float64:
 		switch v := b.(type) {
-		case int:
+		case int64:
 			if v == 0 {
 				log.Error("Division by zero", log.A("a", a), log.A("b", b))
 

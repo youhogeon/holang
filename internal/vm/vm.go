@@ -30,7 +30,7 @@ func (vm *VM) Interpret(chunk *bytecode.Chunk) InterpretResult {
 }
 
 func (vm *VM) peekOp() bytecode.OpCode {
-	return bytecode.OpCode(vm.chunk.Code[vm.ip])
+	return vm.chunk.GetOperator(vm.ip)
 }
 
 func (vm *VM) getOp() bytecode.OpCode {

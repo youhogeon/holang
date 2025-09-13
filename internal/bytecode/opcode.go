@@ -18,6 +18,7 @@ const (
 	OP_SUBTRACT
 	OP_MULTIPLY
 	OP_DIVIDE
+	OP_NOT
 )
 
 var strings = map[OpCode]string{
@@ -28,6 +29,7 @@ var strings = map[OpCode]string{
 	OP_SUBTRACT: "OP_SUBTRACT",
 	OP_MULTIPLY: "OP_MULTIPLY",
 	OP_DIVIDE:   "OP_DIVIDE",
+	OP_NOT:      "OP_NOT",
 }
 
 var operandsCount = map[OpCode]int{

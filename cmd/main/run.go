@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"internal/ast"
 	"internal/bytecode"
+	"internal/codegen"
 	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
@@ -52,6 +53,9 @@ func run(source []byte) {
 		return []log.Field{log.S("source", _sourceStr)}
 	})
 
+	// ================================================================
+	// Scan
+	// ================================================================
 	scanner := scanner.NewScanner(sourceStr)
 	tokens, errs := scanner.ScanTokens()
 
@@ -61,6 +65,9 @@ func run(source []byte) {
 		return
 	}
 
+	// ================================================================
+	// Parse
+	// ================================================================
 	p := parser.NewParser(tokens)
 	printer := ast.NewAstPrinter()
 
@@ -76,22 +83,29 @@ func run(source []byte) {
 		return
 	}
 
-	test()
+	// ================================================================
+	// Codegen
+	// ================================================================
 
-}
+	ch := bytecode.NewChunk()
+	em := codegen.NewChunkEmitter(ch)
+	gen := codegen.NewCodeGenerator(em)
 
-func test() {
-	c := bytecode.NewChunk()
+	if err := gen.Generate(statements); err != nil {
+		log.Error("Codegen error", log.E(err))
 
-	c.Write(123, bytecode.OP_CONSTANT, c.AddConstant(500))
-	c.Write(123, bytecode.OP_NEGATE)
-	c.Write(123, bytecode.OP_CONSTANT, c.AddConstant(600))
-	c.Write(123, bytecode.OP_ADD)
-	c.Write(123, bytecode.OP_RETURN)
-	c.Disassemble()
+		return
+	}
 
+	disassemble := ch.Disassemble()
+	log.Debug("Codegen complete", log.A("bytecode", disassemble))
+
+	// ================================================================
+	// Run
+	// ================================================================
 	vm := vm.NewVM()
-	result := vm.Interpret(c)
+	result := vm.Interpret(ch)
 
 	log.Info("VM interpret finished", log.A("result", result))
+
 }

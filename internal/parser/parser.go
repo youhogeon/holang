@@ -87,6 +87,7 @@ func (p *Parser) varDecl() (*ast.Var, error) {
 	return &ast.Var{
 		Name:        name,
 		Initializer: initializer,
+		Offset:      ast.Offset(name.Offset),
 	}, nil
 }
 
@@ -104,7 +105,10 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 			return nil, err
 		}
 
-		superclass = &ast.Variable{Name: superToken}
+		superclass = &ast.Variable{
+			Name:   superToken,
+			Offset: ast.Offset(superToken.Offset),
+		}
 
 		if name.Lexeme == superToken.Lexeme {
 			return nil, NewParseErrorWithLog("a class cannot inherit from itself", superToken)
@@ -136,6 +140,7 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		Name:       name,
 		Methods:    methods,
 		Superclass: superclass,
+		Offset:     ast.Offset(name.Offset),
 	}, nil
 }
 
@@ -190,6 +195,7 @@ func (p *Parser) funDecl() (*ast.Function, error) {
 		Name:   name,
 		Params: parameters,
 		Body:   body.Statements,
+		Offset: ast.Offset(name.Offset),
 	}, nil
 }
 
@@ -230,13 +236,17 @@ func (p *Parser) statement() (ast.Stmt, error) {
 }
 
 func (p *Parser) block() (*ast.Block, error) {
+	offset := p.previous().Offset
 	statements := make([]ast.Stmt, 0)
 
 	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
+
 		stmt, err := p.declaration()
 
 		if err != nil {
-			return &ast.Block{}, err
+			return &ast.Block{
+				Offset: ast.Offset(offset),
+			}, err
 		}
 
 		statements = append(statements, stmt)
@@ -244,13 +254,19 @@ func (p *Parser) block() (*ast.Block, error) {
 
 	_, err := p.consumeOrError(scanner.RIGHT_BRACE, "Expect '}' after block.")
 	if err != nil {
-		return &ast.Block{}, err
+		return &ast.Block{
+			Offset: ast.Offset(offset),
+		}, err
 	}
 
-	return &ast.Block{Statements: statements}, nil
+	return &ast.Block{
+		Statements: statements,
+		Offset:     ast.Offset(offset),
+	}, nil
 }
 
 func (p *Parser) exprStatement() (*ast.Expression, error) {
+	offset := p.peek().Offset
 	expr, err := p.expression()
 
 	if err != nil {
@@ -265,10 +281,12 @@ func (p *Parser) exprStatement() (*ast.Expression, error) {
 
 	return &ast.Expression{
 		Expression: expr,
+		Offset:     ast.Offset(offset),
 	}, nil
 }
 
 func (p *Parser) printStatement() (*ast.Print, error) {
+	offset := p.previous().Offset
 	expr, err := p.expression()
 
 	if err != nil {
@@ -283,10 +301,12 @@ func (p *Parser) printStatement() (*ast.Print, error) {
 
 	return &ast.Print{
 		Expression: expr,
+		Offset:     ast.Offset(offset),
 	}, nil
 }
 
 func (p *Parser) ifStatement() (*ast.If, error) {
+	offset := p.previous().Offset
 	_, err := p.consumeOrError(scanner.LEFT_PAREN, "Expect '(' after if.")
 	if err != nil {
 		return nil, err
@@ -320,10 +340,12 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 		Condition:  condition,
 		ThenBranch: thenBranch,
 		ElseBranch: elseBranch,
+		Offset:     ast.Offset(offset),
 	}, nil
 }
 
 func (p *Parser) whileStatement() (*ast.While, error) {
+	offset := p.previous().Offset
 	p.loopDepth++
 	defer func() { p.loopDepth-- }()
 
@@ -350,10 +372,13 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 	return &ast.While{
 		Condition: condition,
 		Body:      branch,
+		Offset:    ast.Offset(offset),
 	}, nil
 }
 
 func (p *Parser) forStatement() (ast.Stmt, error) {
+	offset := p.previous().Offset
+
 	p.loopDepth++
 	defer func() { p.loopDepth-- }()
 
@@ -414,8 +439,12 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 		body = &ast.Block{
 			Statements: []ast.Stmt{
 				body,
-				&ast.Expression{Expression: increment},
+				&ast.Expression{
+					Expression: increment,
+					Offset:     ast.Offset(offset),
+				},
 			},
+			Offset: ast.Offset(offset),
 		}
 	}
 
@@ -426,6 +455,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 	body = &ast.While{
 		Condition: condition,
 		Body:      body,
+		Offset:    ast.Offset(offset),
 	}
 
 	if initializer != nil {
@@ -434,6 +464,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 				initializer,
 				body,
 			},
+			Offset: ast.Offset(offset),
 		}
 	}
 
@@ -441,6 +472,8 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 }
 
 func (p *Parser) breakStatement() (*ast.Break, error) {
+	offset := p.previous().Offset
+
 	if p.loopDepth == 0 {
 		return nil, NewParseErrorWithLog("break statement not within a loop", p.previous())
 	}
@@ -450,10 +483,14 @@ func (p *Parser) breakStatement() (*ast.Break, error) {
 		return nil, err
 	}
 
-	return &ast.Break{}, nil
+	return &ast.Break{
+		Offset: ast.Offset(offset),
+	}, nil
 }
 
 func (p *Parser) continueStatement() (*ast.Continue, error) {
+	offset := p.previous().Offset
+
 	if p.loopDepth == 0 {
 		return nil, NewParseErrorWithLog("continue statement not within a loop", p.previous())
 	}
@@ -463,7 +500,9 @@ func (p *Parser) continueStatement() (*ast.Continue, error) {
 		return nil, err
 	}
 
-	return &ast.Continue{}, nil
+	return &ast.Continue{
+		Offset: ast.Offset(offset),
+	}, nil
 }
 
 func (p *Parser) returnStatement() (*ast.Return, error) {
@@ -487,6 +526,7 @@ func (p *Parser) returnStatement() (*ast.Return, error) {
 	return &ast.Return{
 		Keyword: keyword,
 		Value:   value,
+		Offset:  ast.Offset(keyword.Offset),
 	}, nil
 }
 
@@ -523,6 +563,7 @@ func (p *Parser) assignment() (ast.Expr, error) {
 				Object: get.Object,
 				Name:   get.Name,
 				Value:  value,
+				Offset: ast.Offset(get.Name.Offset),
 			}, nil
 		}
 
@@ -565,6 +606,7 @@ func (p *Parser) ternary() (ast.Expr, error) {
 			Mid:            mid,
 			SecondOperator: secondOp,
 			Right:          right,
+			Offset:         ast.Offset(firstOp.Offset),
 		}, nil
 	}
 
@@ -590,6 +632,7 @@ func (p *Parser) logicOr() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -615,6 +658,7 @@ func (p *Parser) logicAnd() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -640,6 +684,7 @@ func (p *Parser) equality() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -665,6 +710,7 @@ func (p *Parser) comparison() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -690,6 +736,7 @@ func (p *Parser) term() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -715,6 +762,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}
 	}
 
@@ -733,6 +781,7 @@ func (p *Parser) unary() (ast.Expr, error) {
 		return &ast.Unary{
 			Operator: operator,
 			Right:    right,
+			Offset:   ast.Offset(operator.Offset),
 		}, nil
 	}
 
@@ -760,6 +809,7 @@ func (p *Parser) call() (ast.Expr, error) {
 			expr = &ast.Get{
 				Object: expr,
 				Name:   name,
+				Offset: ast.Offset(name.Offset),
 			}
 		} else {
 			break
@@ -800,32 +850,53 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 		Callee:    callee,
 		Paren:     paren,
 		Arguments: arguments,
+		Offset:    ast.Offset(paren.Offset),
 	}, nil
 }
 
 func (p *Parser) primary() (ast.Expr, error) {
+	offset := p.peek().Offset
+
 	if p.match(scanner.FALSE) {
-		return &ast.Literal{Value: false}, nil
+		return &ast.Literal{
+			Value:  false,
+			Offset: ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.TRUE) {
-		return &ast.Literal{Value: true}, nil
+		return &ast.Literal{
+			Value:  true,
+			Offset: ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.NIL) {
-		return &ast.Literal{Value: nil}, nil
+		return &ast.Literal{
+			Value:  nil,
+			Offset: ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.THIS) {
-		return &ast.This{Keyword: p.previous()}, nil
+		return &ast.This{
+			Keyword: p.previous(),
+			Offset:  ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.NUMBER_INT, scanner.NUMBER_REAL, scanner.STRING) {
-		return &ast.Literal{Value: p.previous().Literal}, nil
+		return &ast.Literal{
+			Value:  p.previous().Literal,
+			Offset: ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.IDENTIFIER) {
-		return &ast.Variable{Name: p.previous()}, nil
+		return &ast.Variable{
+			Name:   p.previous(),
+			Offset: ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.LEFT_PAREN) {
@@ -841,7 +912,10 @@ func (p *Parser) primary() (ast.Expr, error) {
 			return nil, err
 		}
 
-		return &ast.Grouping{Expression: expr}, nil
+		return &ast.Grouping{
+			Expression: expr,
+			Offset:     ast.Offset(offset),
+		}, nil
 	}
 
 	if p.match(scanner.SUPER) {
@@ -860,6 +934,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Super{
 			Keyword: keyword,
 			Method:  method,
+			Offset:  ast.Offset(offset),
 		}, nil
 	}
 
