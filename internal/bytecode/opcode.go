@@ -44,6 +44,7 @@ const (
 
 	// SPECIAL
 	OP_RETURN
+	OP_POP
 	OP_PRINT
 )
 

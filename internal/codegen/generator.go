@@ -213,7 +213,13 @@ func (g *CodeGenerator) VisitClassStmt(stmt *ast.Class) any {
 }
 
 func (g *CodeGenerator) VisitExpressionStmt(stmt *ast.Expression) any {
-	return stmt.Expression.Accept(g)
+	if err := stmt.Expression.Accept(g); err != nil {
+		return err
+	}
+
+	g.emit(stmt.Offset, bytecode.OP_POP)
+
+	return nil
 }
 
 func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
@@ -225,6 +231,12 @@ func (g *CodeGenerator) VisitIfStmt(stmt *ast.If) any {
 }
 
 func (g *CodeGenerator) VisitPrintStmt(stmt *ast.Print) any {
+	if err := stmt.Expression.Accept(g); err != nil {
+		return err
+	}
+
+	g.emit(stmt.Offset, bytecode.OP_PRINT)
+
 	return nil
 }
 

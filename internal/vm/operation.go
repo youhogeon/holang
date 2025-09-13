@@ -7,8 +7,6 @@ import (
 )
 
 var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
-	(*VM).OP_RETURN,
-
 	// CONSTANT
 	(*VM).OP_CONSTANT,
 	(*VM).OP_TRUE,
@@ -38,12 +36,11 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_LESS,
 	(*VM).OP_GREATER_EQUAL,
 	(*VM).OP_LESS_EQUAL,
-}
 
-func (vm *VM) OP_RETURN() InterpretResult {
-	log.Info("OP_RETURN", log.A("stack pop!", vm.pop()))
-
-	return InterpretResultOK
+	// SPECIAL
+	(*VM).OP_RETURN,
+	(*VM).OP_POP,
+	(*VM).OP_PRINT,
 }
 
 // ================================================================
@@ -328,4 +325,25 @@ func (vm *VM) _binary(
 	log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
 	return InterpretResultRuntimeError
+}
+
+// ================================================================
+// SPECIAL
+// ================================================================
+
+func (vm *VM) OP_RETURN() InterpretResult {
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_POP() InterpretResult {
+	vm.pop()
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_PRINT() InterpretResult {
+	value := vm.pop()
+	fmt.Println(value)
+
+	return InterpretResultOK
 }
