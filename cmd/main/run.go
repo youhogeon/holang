@@ -3,7 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"internal/ast"
 	"internal/bytecode"
+	"internal/parser"
+	"internal/scanner"
 	"internal/util/log"
 	"internal/vm"
 	"os"
@@ -49,7 +52,32 @@ func run(source []byte) {
 		return []log.Field{log.S("source", _sourceStr)}
 	})
 
+	scanner := scanner.NewScanner(sourceStr)
+	tokens, errs := scanner.ScanTokens()
+
+	log.Debug("Scan complete", log.A("tokens", tokens), log.A("errors", errs))
+
+	if len(errs) > 0 {
+		return
+	}
+
+	p := parser.NewParser(tokens)
+	printer := ast.NewAstPrinter()
+
+	statements, errs := p.Parse()
+
+	log.Debug("Parse complete", log.A("ast", statements), log.A("errors", errs))
+
+	for _, stmt := range statements {
+		log.Debug("AST", log.S("astStr", printer.PrintStmt(stmt)))
+	}
+
+	if len(errs) > 0 {
+		return
+	}
+
 	test()
+
 }
 
 func test() {
