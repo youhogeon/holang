@@ -1,4 +1,12 @@
-generate:
+TOOLS = \
+	golang.org/x/tools/cmd/stringer@latest
+
+tools:
+	for t in $(TOOLS); do \
+		go install $$t; \
+	done
+
+generate: tools
 	go generate ./internal/bytecode
 
 all: generate
