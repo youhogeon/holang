@@ -26,7 +26,7 @@ func (g *CodeGenerator) Generate(statements []ast.Stmt) error {
 		}
 	}
 
-	g.emit(ast.Offset{}, bytecode.OP_RETURN)
+	g.emit_(bytecode.OP_RETURN)
 
 	return nil
 }
@@ -47,12 +47,51 @@ func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 	return nil
 }
 
+func (g *CodeGenerator) emit_(op bytecode.OpCode, operands ...int64) {
+	g.em.Emit(bytecode.Offset{Line: -1, Index: -1}, op, operands...)
+}
+
 func (g *CodeGenerator) emit(offset ast.Offset, op bytecode.OpCode, operands ...int64) {
 	g.em.Emit(bytecode.Offset(offset), op, operands...)
 }
 
 func (g *CodeGenerator) emitConstant(offset ast.Offset, value bytecode.Value) {
-	g.em.EmitConstant(bytecode.Offset(offset), value)
+	bOffset := bytecode.Offset(offset)
+
+	switch v := value.(type) {
+	case nil:
+		g.em.Emit(bOffset, bytecode.OP_NIL)
+
+	case bool:
+		if v {
+			g.em.Emit(bOffset, bytecode.OP_TRUE)
+		} else {
+			g.em.Emit(bOffset, bytecode.OP_FALSE)
+		}
+
+	case int64:
+		switch v {
+		case -1:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_M1)
+		case 0:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_0)
+		case 1:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_1)
+		case 2:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_2)
+		case 3:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_3)
+		case 4:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_4)
+		case 5:
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT_5)
+		default:
+			g.em.EmitConstant(bOffset, value)
+		}
+
+	default:
+		g.em.EmitConstant(bOffset, value)
+	}
 }
 
 // ================================================================
@@ -113,7 +152,7 @@ func (g *CodeGenerator) VisitGetExpr(expr *ast.Get) any {
 }
 
 func (g *CodeGenerator) VisitGroupingExpr(expr *ast.Grouping) any {
-	return nil
+	return expr.Expression.Accept(g)
 }
 
 func (g *CodeGenerator) VisitLiteralExpr(expr *ast.Literal) any {
