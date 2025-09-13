@@ -67,6 +67,7 @@ func (c *Chunk) Disassemble() []string {
 	opIdx := 0
 	for pos := 0; pos < len(c.Code); pos++ {
 		operator := OpCode(c.Code[pos])
+		_pos := pos
 
 		operandsCount := operator.OperandsCount()
 		operands := make([]any, operandsCount)
@@ -75,7 +76,7 @@ func (c *Chunk) Disassemble() []string {
 			x, n := c.GetOperand(pos + 1 + j)
 			pos += n
 
-			if operator == OP_COSNTANT {
+			if operator == OP_CONSTANT {
 				operands[j] = fmt.Sprintf("%d, value %v", x, c.GetConstant(x))
 			} else {
 				operands[j] = x
@@ -83,7 +84,7 @@ func (c *Chunk) Disassemble() []string {
 		}
 
 		dis = append(dis, operator.String())
-		log.Debug("Disassemble", log.I("pos", pos), log.I("line", c.Lines[opIdx]), log.A("operator", operator), log.A("operands", operands))
+		log.Debug("Disassemble", log.I("pos", _pos), log.I("line", c.Lines[opIdx]), log.A("operator", operator), log.A("operands", operands))
 
 		opIdx += 1
 	}

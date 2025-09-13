@@ -2,20 +2,36 @@ package bytecode
 
 type OpCode byte
 
+// ================================================================
+// OP codes
+// --------
+// 1. const 정의
+// 1. (필요 시) operandsCount 추가
+// 1. operation.go 구현
+// ================================================================
+
 const (
 	OP_RETURN OpCode = iota
-	OP_COSNTANT
+	OP_CONSTANT
+	OP_NEGATE
 	OP_ADD
+	OP_SUBTRACT
+	OP_MULTIPLY
+	OP_DIVIDE
 )
 
 var strings = map[OpCode]string{
 	OP_RETURN:   "OP_RETURN",
-	OP_COSNTANT: "OP_CONSTANT",
+	OP_CONSTANT: "OP_CONSTANT",
+	OP_NEGATE:   "OP_NEGATE",
 	OP_ADD:      "OP_ADD",
+	OP_SUBTRACT: "OP_SUBTRACT",
+	OP_MULTIPLY: "OP_MULTIPLY",
+	OP_DIVIDE:   "OP_DIVIDE",
 }
 
 var operandsCount = map[OpCode]int{
-	OP_COSNTANT: 1,
+	OP_CONSTANT: 1,
 }
 
 func (op OpCode) String() string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"internal/bytecode"
 	"internal/util/log"
+	"internal/vm"
 	"os"
 )
 
@@ -54,10 +55,15 @@ func run(source []byte) {
 func test() {
 	c := bytecode.NewChunk()
 
-	c.Write(123, bytecode.OP_RETURN)
-	c.Write(123, bytecode.OP_COSNTANT, c.AddConstant(500))
-	c.Write(123, bytecode.OP_COSNTANT, c.AddConstant("HOLang2"))
+	c.Write(123, bytecode.OP_CONSTANT, c.AddConstant(500))
+	c.Write(123, bytecode.OP_NEGATE)
+	c.Write(123, bytecode.OP_CONSTANT, c.AddConstant(600))
+	c.Write(123, bytecode.OP_ADD)
 	c.Write(123, bytecode.OP_RETURN)
 	c.Disassemble()
 
+	vm := vm.NewVM()
+	result := vm.Interpret(c)
+
+	log.Info("VM interpret finished", log.A("result", result))
 }
