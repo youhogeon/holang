@@ -1,5 +1,6 @@
 package bytecode
 
+//go:generate stringer -type=OpCode
 type OpCode byte
 
 // ================================================================
@@ -11,10 +12,8 @@ type OpCode byte
 // ================================================================
 
 const (
-	OP_RETURN OpCode = iota
-
 	// CONSTANT
-	OP_CONSTANT
+	OP_CONSTANT OpCode = iota
 	OP_TRUE
 	OP_FALSE
 	OP_NIL
@@ -29,7 +28,7 @@ const (
 	// UNARY, TERNARY
 	OP_NEGATE
 	OP_NOT
-	OP_TERNARY
+	// OP_TERNARY
 
 	// BINARY
 	OP_ADD
@@ -42,46 +41,14 @@ const (
 	OP_LESS
 	OP_GREATER_EQUAL
 	OP_LESS_EQUAL
-)
 
-var strings = map[OpCode]string{
-	OP_RETURN:        "OP_RETURN",
-	OP_CONSTANT:      "OP_CONSTANT",
-	OP_TRUE:          "OP_TRUE",
-	OP_FALSE:         "OP_FALSE",
-	OP_NIL:           "OP_NIL",
-	OP_CONSTANT_M1:   "OP_CONSTANT_M1",
-	OP_CONSTANT_0:    "OP_CONSTANT_0",
-	OP_CONSTANT_1:    "OP_CONSTANT_1",
-	OP_CONSTANT_2:    "OP_CONSTANT_2",
-	OP_CONSTANT_3:    "OP_CONSTANT_3",
-	OP_CONSTANT_4:    "OP_CONSTANT_4",
-	OP_CONSTANT_5:    "OP_CONSTANT_5",
-	OP_NEGATE:        "OP_NEGATE",
-	OP_NOT:           "OP_NOT",
-	OP_TERNARY:       "OP_TERNARY",
-	OP_ADD:           "OP_ADD",
-	OP_SUBTRACT:      "OP_SUBTRACT",
-	OP_MULTIPLY:      "OP_MULTIPLY",
-	OP_DIVIDE:        "OP_DIVIDE",
-	OP_EQUAL:         "OP_EQUAL",
-	OP_NOT_EQUAL:     "OP_NOT_EQUAL",
-	OP_GREATER:       "OP_GREATER",
-	OP_LESS:          "OP_LESS",
-	OP_GREATER_EQUAL: "OP_GREATER_EQUAL",
-	OP_LESS_EQUAL:    "OP_LESS_EQUAL",
-}
+	// SPECIAL
+	OP_RETURN
+	OP_PRINT
+)
 
 var operandsCount = map[OpCode]int{
 	OP_CONSTANT: 1,
-}
-
-func (op OpCode) String() string {
-	if s, ok := strings[op]; ok {
-		return s
-	}
-
-	return "OP_UNKNOWN"
 }
 
 func (op OpCode) OperandsCount() int {
