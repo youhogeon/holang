@@ -4,6 +4,7 @@ use (
 	./cmd/main
 	./internal/ast
 	./internal/bytecode
+	./internal/codegen
 	./internal/interpreter
 	./internal/parser
 	./internal/scanner
