@@ -137,24 +137,16 @@ func EnableDebug() { logLevel.SetLevel(zap.DebugLevel) }
 // DisableDebug switches log level back to info.
 func DisableDebug() { logLevel.SetLevel(zap.InfoLevel) }
 
-func Common(botId string, uid int64, code string) []Field {
-	return []Field{
-		S("botId", botId),
-		I("uid", uid),
-		S("code", code),
-	}
-}
-
 func S(key string, value string) Field {
 	return zap.String(key, value)
 }
 
-func I(key string, value int64) Field {
-	return zap.Int64(key, value)
+func I(key string, value int) Field {
+	return zap.Int(key, value)
 }
 
-func Int(key string, value int) Field {
-	return zap.Int(key, value)
+func I64(key string, value int64) Field {
+	return zap.Int64(key, value)
 }
 
 func E(err error) Field {
@@ -166,7 +158,7 @@ func A(key string, value any) Field {
 }
 
 func F(key string, value float64) Field {
-	return zap.Any(key, value)
+	return zap.Float64(key, value)
 }
 
 func D(key string, value time.Duration) Field {

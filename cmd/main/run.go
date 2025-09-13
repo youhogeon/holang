@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"internal/bytecode"
 	"internal/util/log"
 	"os"
 )
@@ -46,5 +47,17 @@ func run(source []byte) {
 
 		return []log.Field{log.S("source", _sourceStr)}
 	})
+
+	test()
+}
+
+func test() {
+	c := bytecode.NewChunk()
+
+	c.Write(123, bytecode.OP_RETURN)
+	c.Write(123, bytecode.OP_COSNTANT, c.AddConstant(500))
+	c.Write(123, bytecode.OP_COSNTANT, c.AddConstant("HOLang2"))
+	c.Write(123, bytecode.OP_RETURN)
+	c.Disassemble()
 
 }
