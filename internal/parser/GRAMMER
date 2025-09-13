@@ -1,0 +1,55 @@
+program        → declaration* EOF ;
+ 
+declaration    → varDecl
+               | classDecl
+               | funDecl
+               | statement ;
+ 
+varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )?
+                 "{" function* "}" ;
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+
+statement      → block
+               | exprStmt
+               | printStmt
+               | ifStmt
+               | whileStmt
+               | forStmt
+               | breakStmt
+               | continueStmt
+               | returnStmt ;
+
+block          → "{" declaration* "}" ;
+exprStmt       → expression ";" ;
+printStmt      → "print" expression ";" ;
+ifStmt         → "if" "(" expression ")" statement
+                 ( "else" statement )?   ;
+whileStmt      → "while" "(" expression ")" statement ;
+forStmt        → "for" "("
+                 ( varDecl | exprStmt | ";" ) expression? ";" expression?
+                 ")" statement ;
+breakStmt      → "break" ";" ;
+continueStmt   → "continue" ";" ;
+returnStmt     → "return" expression? ";" ;
+
+expression     → assignment ;
+assignment     → ( call "." )? IDENTIFIER "=" assignment
+               | ternary;
+ternary        → logic_or ("?" expression ":" expression)? ;
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → equality ( "and" equality )* ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+unary          → ( "!" | "-" ) unary
+               | call ;
+call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+arguments      → expression ( "," expression )* ;
+primary        → NUMBER | STRING | "T" | "F" | "nil" | "this"
+               | IDENTIFIER
+               | "(" expression ")"
+               | "super" "." IDENTIFIER ;
