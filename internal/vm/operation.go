@@ -37,6 +37,11 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_GREATER_EQUAL,
 	(*VM).OP_LESS_EQUAL,
 
+	// VARIABLE
+	(*VM).OP_DEFINE_GLOBAL,
+	(*VM).OP_GET_GLOBAL,
+	(*VM).OP_SET_GLOBAL,
+
 	// SPECIAL
 	(*VM).OP_RETURN,
 	(*VM).OP_POP,
@@ -323,6 +328,47 @@ func (vm *VM) _binary(
 	}
 
 	log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
+
+	return InterpretResultRuntimeError
+}
+
+// ================================================================
+// VARIABLE
+// ================================================================
+
+func (vm *VM) OP_DEFINE_GLOBAL() InterpretResult {
+	name := vm.getConstant()
+
+	value := vm.pop()
+	vm.globals[name.(string)] = value
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_GET_GLOBAL() InterpretResult {
+	name := vm.getConstant()
+
+	if value, ok := vm.globals[name.(string)]; ok {
+		vm.push(value)
+
+		return InterpretResultOK
+	}
+
+	log.Error("Undefined variable", log.A("name", name))
+
+	return InterpretResultRuntimeError
+}
+
+func (vm *VM) OP_SET_GLOBAL() InterpretResult {
+	name := vm.getConstant()
+	if _, ok := vm.globals[name.(string)]; ok {
+		value := vm.pop()
+		vm.globals[name.(string)] = value
+
+		return InterpretResultOK
+	}
+
+	log.Error("Undefined variable", log.A("name", name))
 
 	return InterpretResultRuntimeError
 }

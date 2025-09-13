@@ -86,12 +86,16 @@ func (g *CodeGenerator) emitConstant(offset ast.Offset, value bytecode.Value) {
 		case 5:
 			g.em.Emit(bOffset, bytecode.OP_CONSTANT_5)
 		default:
-			g.em.EmitConstant(bOffset, value)
+			g.em.Emit(bOffset, bytecode.OP_CONSTANT, g.makeConstant(value))
 		}
 
 	default:
-		g.em.EmitConstant(bOffset, value)
+		g.em.Emit(bOffset, bytecode.OP_CONSTANT, g.makeConstant(value))
 	}
+}
+
+func (g *CodeGenerator) makeConstant(value bytecode.Value) int64 {
+	return g.em.MakeConstant(value)
 }
 
 // ================================================================
@@ -99,6 +103,13 @@ func (g *CodeGenerator) emitConstant(offset ast.Offset, value bytecode.Value) {
 // ================================================================
 
 func (g *CodeGenerator) VisitAssignExpr(expr *ast.Assign) any {
+	if err := expr.Value.Accept(g); err != nil {
+		return err
+	}
+
+	constant := g.makeConstant(expr.Name.Lexeme)
+	g.emit(expr.Offset, bytecode.OP_SET_GLOBAL, constant)
+
 	return nil
 }
 
@@ -197,6 +208,9 @@ func (g *CodeGenerator) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
+	constant := g.makeConstant(expr.Name.Lexeme)
+	g.emit(expr.Offset, bytecode.OP_GET_GLOBAL, constant)
+
 	return nil
 }
 
@@ -247,6 +261,17 @@ func (g *CodeGenerator) VisitReturnStmt(stmt *ast.Return) any {
 }
 
 func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
+	if stmt.Initializer == nil {
+		g.emitConstant(stmt.Offset, nil)
+	} else {
+		if err := stmt.Initializer.Accept(g); err != nil {
+			return err
+		}
+	}
+
+	constant := g.makeConstant(stmt.Name.Lexeme)
+	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, constant)
+
 	return nil
 }
 

@@ -9,11 +9,15 @@ type VM struct {
 	chunk   *bytecode.Chunk
 	ip      int
 	stack   []bytecode.Value
+	globals map[string]bytecode.Value
 	objects *ObjectList
 }
 
 func NewVM() *VM {
-	return &VM{}
+	return &VM{
+		globals: make(map[string]bytecode.Value),
+		objects: NewObjectList(),
+	}
 }
 
 func (vm *VM) Free() {
@@ -21,13 +25,16 @@ func (vm *VM) Free() {
 		vm.chunk.Clear()
 		vm.chunk = nil
 	}
+
+	vm.ip = 0
+	vm.stack = vm.stack[:0]
+	vm.globals = make(map[string]bytecode.Value)
+	vm.objects = NewObjectList()
 }
 
 func (vm *VM) Interpret(chunk *bytecode.Chunk) InterpretResult {
 	vm.chunk = chunk
 	vm.ip = 0
-	vm.stack = vm.stack[:0]
-	vm.objects = NewObjectList()
 
 	return vm.run()
 }

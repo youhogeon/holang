@@ -42,6 +42,11 @@ const (
 	OP_GREATER_EQUAL
 	OP_LESS_EQUAL
 
+	// VARIABLE
+	OP_DEFINE_GLOBAL
+	OP_GET_GLOBAL
+	OP_SET_GLOBAL
+
 	// SPECIAL
 	OP_RETURN
 	OP_POP
@@ -49,7 +54,10 @@ const (
 )
 
 var operandsCount = map[OpCode]int{
-	OP_CONSTANT: 1,
+	OP_CONSTANT:      1,
+	OP_DEFINE_GLOBAL: 1,
+	OP_GET_GLOBAL:    1,
+	OP_SET_GLOBAL:    1,
 }
 
 func (op OpCode) OperandsCount() int {

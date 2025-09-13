@@ -10,7 +10,7 @@ import (
 	"internal/parser"
 	"internal/scanner"
 	"internal/util/log"
-	"internal/vm"
+	vm_ "internal/vm"
 	"os"
 )
 
@@ -23,17 +23,18 @@ func runFile(fileName string) {
 		}
 	}
 
-	run(fileBody, nil)
+	run(fileBody, nil, nil)
 }
 
 func runLoop() {
 	inputScanner := bufio.NewScanner(os.Stdin)
 	interpreter := interpreter_.NewInterpreter()
+	vm := vm_.NewVM()
 
 	log.StdOut("> ")
 	for inputScanner.Scan() {
 		line := inputScanner.Bytes()
-		run(line, interpreter)
+		run(line, interpreter, vm)
 		log.StdOut("> ")
 	}
 
@@ -42,7 +43,7 @@ func runLoop() {
 	}
 }
 
-func run(source []byte, interpreter *interpreter_.Interpreter) {
+func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	sourceStr := string(source)
 
 	log.InfoIfEnabled("Run source", func() []log.Field {
@@ -125,7 +126,9 @@ func run(source []byte, interpreter *interpreter_.Interpreter) {
 	// ================================================================
 	// Run
 	// ================================================================
-	vm := vm.NewVM()
+	if vm == nil {
+		vm = vm_.NewVM()
+	}
 	result := vm.Interpret(ch)
 
 	log.Info("VM interpret finished", log.A("result", result))

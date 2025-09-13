@@ -4,7 +4,7 @@ import "internal/bytecode"
 
 type Emitter interface {
 	Emit(offset bytecode.Offset, op bytecode.OpCode, operands ...int64)
-	EmitConstant(offset bytecode.Offset, value bytecode.Value)
+	MakeConstant(value bytecode.Value) int64
 	EmitJump(offset bytecode.Offset, op bytecode.OpCode) int
 	PatchJump(at int)
 	EmitLoop(offset bytecode.Offset, loopStart int)
@@ -24,9 +24,8 @@ func (e *ChunkEmitter) Emit(offset bytecode.Offset, op bytecode.OpCode, operands
 	e.chunk.AddOperator(offset, op, operands...)
 }
 
-func (e *ChunkEmitter) EmitConstant(offset bytecode.Offset, value bytecode.Value) {
-	constantIndex := e.chunk.AddConstant(value)
-	e.chunk.AddOperator(offset, bytecode.OP_CONSTANT, int64(constantIndex))
+func (e *ChunkEmitter) MakeConstant(value bytecode.Value) int64 {
+	return e.chunk.AddConstant(value)
 }
 
 func (e *ChunkEmitter) EmitJump(offset bytecode.Offset, op bytecode.OpCode) int {
