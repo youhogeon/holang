@@ -114,28 +114,24 @@ func (g *CodeGenerator) VisitBinaryExpr(expr *ast.Binary) any {
 	switch expr.Operator.TokenType {
 	case scanner.PLUS:
 		g.emit(expr.Offset, bytecode.OP_ADD)
-
 	case scanner.MINUS:
 		g.emit(expr.Offset, bytecode.OP_SUBTRACT)
-
 	case scanner.STAR:
 		g.emit(expr.Offset, bytecode.OP_MULTIPLY)
-
 	case scanner.SLASH:
 		g.emit(expr.Offset, bytecode.OP_DIVIDE)
-
 	case scanner.GREATER:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_GREATER)
 	case scanner.GREATER_EQUAL:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_GREATER_EQUAL)
 	case scanner.LESS:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_LESS)
 	case scanner.LESS_EQUAL:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_LESS_EQUAL)
 	case scanner.EQUAL_EQUAL:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_EQUAL)
 	case scanner.BANG_EQUAL:
-		return nil
+		g.emit(expr.Offset, bytecode.OP_NOT_EQUAL)
 	default:
 		return errors.New("unknown binary operator: " + expr.Operator.Lexeme)
 	}

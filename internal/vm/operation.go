@@ -31,6 +31,12 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_SUBTRACT,
 	(*VM).OP_MULTIPLY,
 	(*VM).OP_DIVIDE,
+	(*VM).OP_EQUAL,
+	(*VM).OP_NOT_EQUAL,
+	(*VM).OP_GREATER,
+	(*VM).OP_LESS,
+	(*VM).OP_GREATER_EQUAL,
+	(*VM).OP_LESS_EQUAL,
 }
 
 func (vm *VM) OP_RETURN() InterpretResult {
@@ -198,129 +204,127 @@ func (vm *VM) OP_ADD() InterpretResult {
 }
 
 func (vm *VM) OP_SUBTRACT() InterpretResult {
-	b := vm.pop()
-	a := vm.pop()
-
-	switch a.(type) {
-	case int64:
-		switch v := b.(type) {
-		case int64:
-			vm.push(a.(int64) - v)
-		case float64:
-			vm.push(float64(a.(int64)) - v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	case float64:
-		switch v := b.(type) {
-		case int64:
-			vm.push(a.(float64) - float64(v))
-		case float64:
-			vm.push(a.(float64) - v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	default:
-		log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-		return InterpretResultRuntimeError
-	}
-
-	return InterpretResultOK
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a - b
+		}, func(a float64, b float64) any {
+			return a - b
+		},
+	)
 }
 
 func (vm *VM) OP_MULTIPLY() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a * b
+		}, func(a float64, b float64) any {
+			return a * b
+		},
+	)
+}
+
+func (vm *VM) OP_DIVIDE() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			if b == 0 {
+				return float64(a) / float64(b)
+			} else {
+				return a / b
+			}
+		}, func(a float64, b float64) any {
+			return a / b
+		},
+	)
+}
+
+func (vm *VM) OP_EQUAL() InterpretResult {
 	b := vm.pop()
 	a := vm.pop()
 
-	switch a.(type) {
-	case int64:
-		switch v := b.(type) {
-		case int64:
-			vm.push(a.(int64) * v)
-		case float64:
-			vm.push(float64(a.(int64)) * v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	case float64:
-		switch v := b.(type) {
-		case int64:
-			vm.push(a.(float64) * float64(v))
-		case float64:
-			vm.push(a.(float64) * v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	default:
-		log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-		return InterpretResultRuntimeError
-	}
+	vm.push(util.IsEqual(a, b))
 
 	return InterpretResultOK
 }
 
-func (vm *VM) OP_DIVIDE() InterpretResult {
+func (vm *VM) OP_NOT_EQUAL() InterpretResult {
 	b := vm.pop()
 	a := vm.pop()
 
-	switch a.(type) {
-	case int64:
-		switch v := b.(type) {
-		case int64:
-			if v == 0 {
-				log.Error("Division by zero", log.A("a", a), log.A("b", b))
-
-				return InterpretResultRuntimeError
-			}
-			vm.push(a.(int64) / v)
-		case float64:
-			if v == 0.0 {
-				log.Error("Division by zero", log.A("a", a), log.A("b", b))
-
-				return InterpretResultRuntimeError
-			}
-			vm.push(float64(a.(int64)) / v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	case float64:
-		switch v := b.(type) {
-		case int64:
-			if v == 0 {
-				log.Error("Division by zero", log.A("a", a), log.A("b", b))
-
-				return InterpretResultRuntimeError
-			}
-			vm.push(a.(float64) / float64(v))
-		case float64:
-			if v == 0.0 {
-				log.Error("Division by zero", log.A("a", a), log.A("b", b))
-
-				return InterpretResultRuntimeError
-			}
-			vm.push(a.(float64) / v)
-		default:
-			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-			return InterpretResultRuntimeError
-		}
-	default:
-		log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
-
-		return InterpretResultRuntimeError
-	}
+	vm.push(util.IsNotEqual(a, b))
 
 	return InterpretResultOK
+}
+
+func (vm *VM) OP_GREATER() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a > b
+		}, func(a float64, b float64) any {
+			return a > b
+		},
+	)
+}
+
+func (vm *VM) OP_LESS() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a < b
+		}, func(a float64, b float64) any {
+			return a < b
+		},
+	)
+}
+
+func (vm *VM) OP_GREATER_EQUAL() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a >= b
+		}, func(a float64, b float64) any {
+			return a >= b
+		},
+	)
+}
+
+func (vm *VM) OP_LESS_EQUAL() InterpretResult {
+	return vm._binary(
+		func(a int64, b int64) any {
+			return a <= b
+		}, func(a float64, b float64) any {
+			return a <= b
+		},
+	)
+}
+
+func (vm *VM) _binary(
+	intFunc func(a int64, b int64) any,
+	floatFunc func(a float64, b float64) any,
+) InterpretResult {
+	b := vm.pop()
+	a := vm.pop()
+
+	if aNum, ok := a.(int64); ok {
+		if bNum, ok := b.(int64); ok {
+			vm.push(intFunc(aNum, bNum))
+
+			return InterpretResultOK
+		} else if bNum, ok := b.(float64); ok {
+			vm.push(floatFunc(float64(aNum), bNum))
+
+			return InterpretResultOK
+		}
+	} else if aNum, ok := a.(float64); ok {
+		if bNum, ok := b.(int64); ok {
+			vm.push(floatFunc(aNum, float64(bNum)))
+
+			return InterpretResultOK
+		} else if bNum, ok := b.(float64); ok {
+			vm.push(floatFunc(aNum, bNum))
+
+			return InterpretResultOK
+		}
+	}
+
+	log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
+
+	return InterpretResultRuntimeError
 }
