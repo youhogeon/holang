@@ -170,9 +170,9 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 			func(a, b float64) any { return a <= b },
 		)
 	case scanner.EQUAL_EQUAL:
-		return &valueAndError{left == right, nil}
+		return &valueAndError{util.IsEqual(left, right), nil}
 	case scanner.BANG_EQUAL:
-		return &valueAndError{left != right, nil}
+		return &valueAndError{util.IsNotEqual(left, right), nil}
 	}
 
 	return &valueAndError{nil, NewRuntimeErrorWithLog("unknown binary operator")}
