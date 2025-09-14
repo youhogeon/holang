@@ -4,7 +4,7 @@ import (
 	"errors"
 	"internal/ast"
 	"internal/bytecode"
-	"internal/scanner"
+	"internal/token"
 )
 
 type CodeGenerator struct {
@@ -48,49 +48,47 @@ func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 }
 
 func (g *CodeGenerator) emit_(op bytecode.OpCode, operands ...int64) {
-	g.em.Emit(bytecode.Offset{Line: -1, Index: -1}, op, operands...)
+	g.em.Emit(token.Offset{Line: -1, Index: -1}, op, operands...)
 }
 
-func (g *CodeGenerator) emit(offset ast.Offset, op bytecode.OpCode, operands ...int64) {
-	g.em.Emit(bytecode.Offset(offset), op, operands...)
+func (g *CodeGenerator) emit(offset token.Offset, op bytecode.OpCode, operands ...int64) {
+	g.em.Emit(offset, op, operands...)
 }
 
-func (g *CodeGenerator) emitConstant(offset ast.Offset, value bytecode.Value) {
-	bOffset := bytecode.Offset(offset)
-
+func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
 	switch v := value.(type) {
 	case nil:
-		g.em.Emit(bOffset, bytecode.OP_NIL)
+		g.em.Emit(offset, bytecode.OP_NIL)
 
 	case bool:
 		if v {
-			g.em.Emit(bOffset, bytecode.OP_TRUE)
+			g.em.Emit(offset, bytecode.OP_TRUE)
 		} else {
-			g.em.Emit(bOffset, bytecode.OP_FALSE)
+			g.em.Emit(offset, bytecode.OP_FALSE)
 		}
 
 	case int64:
 		switch v {
 		case -1:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_M1)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_M1)
 		case 0:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_0)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_0)
 		case 1:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_1)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_1)
 		case 2:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_2)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_2)
 		case 3:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_3)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_3)
 		case 4:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_4)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_4)
 		case 5:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT_5)
+			g.em.Emit(offset, bytecode.OP_CONSTANT_5)
 		default:
-			g.em.Emit(bOffset, bytecode.OP_CONSTANT, g.makeConstant(value))
+			g.em.Emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
 		}
 
 	default:
-		g.em.Emit(bOffset, bytecode.OP_CONSTANT, g.makeConstant(value))
+		g.em.Emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
 	}
 }
 
@@ -123,25 +121,25 @@ func (g *CodeGenerator) VisitBinaryExpr(expr *ast.Binary) any {
 	}
 
 	switch expr.Operator.TokenType {
-	case scanner.PLUS:
+	case token.PLUS:
 		g.emit(expr.Offset, bytecode.OP_ADD)
-	case scanner.MINUS:
+	case token.MINUS:
 		g.emit(expr.Offset, bytecode.OP_SUBTRACT)
-	case scanner.STAR:
+	case token.STAR:
 		g.emit(expr.Offset, bytecode.OP_MULTIPLY)
-	case scanner.SLASH:
+	case token.SLASH:
 		g.emit(expr.Offset, bytecode.OP_DIVIDE)
-	case scanner.GREATER:
+	case token.GREATER:
 		g.emit(expr.Offset, bytecode.OP_GREATER)
-	case scanner.GREATER_EQUAL:
+	case token.GREATER_EQUAL:
 		g.emit(expr.Offset, bytecode.OP_GREATER_EQUAL)
-	case scanner.LESS:
+	case token.LESS:
 		g.emit(expr.Offset, bytecode.OP_LESS)
-	case scanner.LESS_EQUAL:
+	case token.LESS_EQUAL:
 		g.emit(expr.Offset, bytecode.OP_LESS_EQUAL)
-	case scanner.EQUAL_EQUAL:
+	case token.EQUAL_EQUAL:
 		g.emit(expr.Offset, bytecode.OP_EQUAL)
-	case scanner.BANG_EQUAL:
+	case token.BANG_EQUAL:
 		g.emit(expr.Offset, bytecode.OP_NOT_EQUAL)
 	default:
 		return errors.New("unknown binary operator: " + expr.Operator.Lexeme)
@@ -194,10 +192,10 @@ func (g *CodeGenerator) VisitUnaryExpr(expr *ast.Unary) any {
 	}
 
 	switch expr.Operator.TokenType {
-	case scanner.MINUS:
+	case token.MINUS:
 		g.emit(expr.Offset, bytecode.OP_NEGATE)
 
-	case scanner.BANG:
+	case token.BANG:
 		g.emit(expr.Offset, bytecode.OP_NOT)
 
 	default:

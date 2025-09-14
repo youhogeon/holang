@@ -3,27 +3,23 @@ package bytecode
 import (
 	"encoding/binary"
 	"fmt"
+	"internal/token"
 	"internal/util/log"
 )
 
 type Value any
 
-type Offset struct {
-	Line  int
-	Index int
-}
-
 type Chunk struct {
 	code      []byte
 	constants []Value
-	offsets   []Offset
+	offsets   []token.Offset
 }
 
 func NewChunk() *Chunk {
 	return &Chunk{}
 }
 
-func (c *Chunk) AddOperator(offset Offset, op OpCode, operands ...int64) {
+func (c *Chunk) AddOperator(offset token.Offset, op OpCode, operands ...int64) {
 	c.AddCode(op)
 	c.offsets = append(c.offsets, offset)
 

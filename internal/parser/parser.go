@@ -2,21 +2,21 @@ package parser
 
 import (
 	"internal/ast"
-	"internal/scanner"
+	"internal/token"
 	"slices"
 )
 
 type Parser struct {
-	tokens    []scanner.Token
+	tokens    []token.Token
 	current   int
 	loopDepth int
 }
 
-func NewParser(tokens []scanner.Token) *Parser {
-	tokensWithoutComments := make([]scanner.Token, 0, len(tokens))
-	for _, token := range tokens {
-		if token.TokenType != scanner.COMMENT && token.TokenType != scanner.MULTI_COMMENT {
-			tokensWithoutComments = append(tokensWithoutComments, token)
+func NewParser(tokens []token.Token) *Parser {
+	tokensWithoutComments := make([]token.Token, 0, len(tokens))
+	for _, t := range tokens {
+		if t.TokenType != token.COMMENT && t.TokenType != token.MULTI_COMMENT {
+			tokensWithoutComments = append(tokensWithoutComments, t)
 		}
 	}
 
@@ -47,15 +47,15 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 }
 
 func (p *Parser) declaration() (ast.Stmt, error) {
-	if p.match(scanner.VAR) {
+	if p.match(token.VAR) {
 		return p.varDecl()
 	}
 
-	if p.match(scanner.CLASS) {
+	if p.match(token.CLASS) {
 		return p.classDecl()
 	}
 
-	if p.match(scanner.FUN) {
+	if p.match(token.FUN) {
 		return p.funDecl()
 	}
 
@@ -63,14 +63,14 @@ func (p *Parser) declaration() (ast.Stmt, error) {
 }
 
 func (p *Parser) varDecl() (*ast.Var, error) {
-	name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect variable name.")
+	name, err := p.consumeOrError(token.IDENTIFIER, "Expect variable name.")
 	if err != nil {
 		return nil, err
 	}
 
 	var initializer ast.Expr
 
-	if p.match(scanner.EQUAL) {
+	if p.match(token.EQUAL) {
 		initializer, err = p.expression()
 
 		if err != nil {
@@ -78,7 +78,7 @@ func (p *Parser) varDecl() (*ast.Var, error) {
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+	_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after value.")
 
 	if err != nil {
 		return nil, err
@@ -87,27 +87,27 @@ func (p *Parser) varDecl() (*ast.Var, error) {
 	return &ast.Var{
 		Name:        name,
 		Initializer: initializer,
-		Offset:      ast.Offset(name.Offset),
+		Offset:      name.Offset,
 	}, nil
 }
 
 func (p *Parser) classDecl() (*ast.Class, error) {
-	name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect class name.")
+	name, err := p.consumeOrError(token.IDENTIFIER, "Expect class name.")
 	if err != nil {
 		return nil, err
 	}
 
 	var superclass *ast.Variable
 
-	if p.match(scanner.LESS) {
-		superToken, err := p.consumeOrError(scanner.IDENTIFIER, "Expect superclass name.")
+	if p.match(token.LESS) {
+		superToken, err := p.consumeOrError(token.IDENTIFIER, "Expect superclass name.")
 		if err != nil {
 			return nil, err
 		}
 
 		superclass = &ast.Variable{
 			Name:   superToken,
-			Offset: ast.Offset(superToken.Offset),
+			Offset: superToken.Offset,
 		}
 
 		if name.Lexeme == superToken.Lexeme {
@@ -115,14 +115,14 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.LEFT_BRACE, "Expect '{' before class body.")
+	_, err = p.consumeOrError(token.LEFT_BRACE, "Expect '{' before class body.")
 	if err != nil {
 		return nil, err
 	}
 
 	methods := make([]*ast.Function, 0)
 
-	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
+	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 		method, err := p.funDecl()
 		if err != nil {
 			return nil, err
@@ -131,7 +131,7 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		methods = append(methods, method)
 	}
 
-	_, err = p.consumeOrError(scanner.RIGHT_BRACE, "Expect '}' after class body.")
+	_, err = p.consumeOrError(token.RIGHT_BRACE, "Expect '}' after class body.")
 	if err != nil {
 		return nil, err
 	}
@@ -140,48 +140,48 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		Name:       name,
 		Methods:    methods,
 		Superclass: superclass,
-		Offset:     ast.Offset(name.Offset),
+		Offset:     name.Offset,
 	}, nil
 }
 
 func (p *Parser) funDecl() (*ast.Function, error) {
-	name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect function name.")
+	name, err := p.consumeOrError(token.IDENTIFIER, "Expect function name.")
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.LEFT_PAREN, "Expect '(' after function name.")
+	_, err = p.consumeOrError(token.LEFT_PAREN, "Expect '(' after function name.")
 	if err != nil {
 		return nil, err
 	}
 
-	parameters := make([]*scanner.Token, 0)
+	parameters := make([]*token.Token, 0)
 
-	if !p.check(scanner.RIGHT_PAREN) {
+	if !p.check(token.RIGHT_PAREN) {
 		for {
 			if len(parameters) >= 255 {
 				return nil, NewParseErrorWithLog("can't have more than 255 parameters", p.peek())
 			}
 
-			param, err := p.consumeOrError(scanner.IDENTIFIER, "Expect parameter name.")
+			param, err := p.consumeOrError(token.IDENTIFIER, "Expect parameter name.")
 			if err != nil {
 				return nil, err
 			}
 
 			parameters = append(parameters, param)
 
-			if !p.match(scanner.COMMA) {
+			if !p.match(token.COMMA) {
 				break
 			}
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after parameters.")
+	_, err = p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after parameters.")
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.LEFT_BRACE, "Expect '{' before function body.")
+	_, err = p.consumeOrError(token.LEFT_BRACE, "Expect '{' before function body.")
 	if err != nil {
 		return nil, err
 	}
@@ -195,40 +195,40 @@ func (p *Parser) funDecl() (*ast.Function, error) {
 		Name:   name,
 		Params: parameters,
 		Body:   body.Statements,
-		Offset: ast.Offset(name.Offset),
+		Offset: name.Offset,
 	}, nil
 }
 
 func (p *Parser) statement() (ast.Stmt, error) {
-	if p.match(scanner.LEFT_BRACE) {
+	if p.match(token.LEFT_BRACE) {
 		return p.block()
 	}
 
-	if p.match(scanner.PRINT) {
+	if p.match(token.PRINT) {
 		return p.printStatement()
 	}
 
-	if p.match(scanner.IF) {
+	if p.match(token.IF) {
 		return p.ifStatement()
 	}
 
-	if p.match(scanner.WHILE) {
+	if p.match(token.WHILE) {
 		return p.whileStatement()
 	}
 
-	if p.match(scanner.FOR) {
+	if p.match(token.FOR) {
 		return p.forStatement()
 	}
 
-	if p.match(scanner.BREAK) {
+	if p.match(token.BREAK) {
 		return p.breakStatement()
 	}
 
-	if p.match(scanner.CONTINUE) {
+	if p.match(token.CONTINUE) {
 		return p.continueStatement()
 	}
 
-	if p.match(scanner.RETURN) {
+	if p.match(token.RETURN) {
 		return p.returnStatement()
 	}
 
@@ -239,29 +239,29 @@ func (p *Parser) block() (*ast.Block, error) {
 	offset := p.previous().Offset
 	statements := make([]ast.Stmt, 0)
 
-	for !p.check(scanner.RIGHT_BRACE) && !p.isAtEnd() {
+	for !p.check(token.RIGHT_BRACE) && !p.isAtEnd() {
 
 		stmt, err := p.declaration()
 
 		if err != nil {
 			return &ast.Block{
-				Offset: ast.Offset(offset),
+				Offset: offset,
 			}, err
 		}
 
 		statements = append(statements, stmt)
 	}
 
-	_, err := p.consumeOrError(scanner.RIGHT_BRACE, "Expect '}' after block.")
+	_, err := p.consumeOrError(token.RIGHT_BRACE, "Expect '}' after block.")
 	if err != nil {
 		return &ast.Block{
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, err
 	}
 
 	return &ast.Block{
 		Statements: statements,
-		Offset:     ast.Offset(offset),
+		Offset:     offset,
 	}, nil
 }
 
@@ -273,7 +273,7 @@ func (p *Parser) exprStatement() (*ast.Expression, error) {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+	_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after value.")
 
 	if err != nil {
 		return nil, err
@@ -281,7 +281,7 @@ func (p *Parser) exprStatement() (*ast.Expression, error) {
 
 	return &ast.Expression{
 		Expression: expr,
-		Offset:     ast.Offset(offset),
+		Offset:     offset,
 	}, nil
 }
 
@@ -293,7 +293,7 @@ func (p *Parser) printStatement() (*ast.Print, error) {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after value.")
+	_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after value.")
 
 	if err != nil {
 		return nil, err
@@ -301,13 +301,13 @@ func (p *Parser) printStatement() (*ast.Print, error) {
 
 	return &ast.Print{
 		Expression: expr,
-		Offset:     ast.Offset(offset),
+		Offset:     offset,
 	}, nil
 }
 
 func (p *Parser) ifStatement() (*ast.If, error) {
 	offset := p.previous().Offset
-	_, err := p.consumeOrError(scanner.LEFT_PAREN, "Expect '(' after if.")
+	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after if.")
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after if condition.")
+	_, err = p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after if condition.")
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +329,7 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 
 	var elseBranch ast.Stmt
 
-	if p.match(scanner.ELSE) {
+	if p.match(token.ELSE) {
 		elseBranch, err = p.statement()
 		if err != nil {
 			return nil, err
@@ -340,7 +340,7 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 		Condition:  condition,
 		ThenBranch: thenBranch,
 		ElseBranch: elseBranch,
-		Offset:     ast.Offset(offset),
+		Offset:     offset,
 	}, nil
 }
 
@@ -349,7 +349,7 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 	p.loopDepth++
 	defer func() { p.loopDepth-- }()
 
-	_, err := p.consumeOrError(scanner.LEFT_PAREN, "Expect '(' after while.")
+	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after while.")
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 		return nil, err
 	}
 
-	_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after while condition.")
+	_, err = p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after while condition.")
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 	return &ast.While{
 		Condition: condition,
 		Body:      branch,
-		Offset:    ast.Offset(offset),
+		Offset:    offset,
 	}, nil
 }
 
@@ -382,19 +382,19 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 	p.loopDepth++
 	defer func() { p.loopDepth-- }()
 
-	_, err := p.consumeOrError(scanner.LEFT_PAREN, "Expect '(' after for.")
+	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after for.")
 	if err != nil {
 		return nil, err
 	}
 
 	var initializer ast.Stmt
 
-	if p.match(scanner.VAR) {
+	if p.match(token.VAR) {
 		initializer, err = p.varDecl()
 		if err != nil {
 			return nil, err
 		}
-	} else if !p.check(scanner.SEMICOLON) { // for any expr stmt
+	} else if !p.check(token.SEMICOLON) { // for any expr stmt
 		initializer, err = p.exprStatement()
 		if err != nil {
 			return nil, err
@@ -403,28 +403,28 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 
 	var condition ast.Expr
 
-	if !p.check(scanner.SEMICOLON) {
+	if !p.check(token.SEMICOLON) {
 		condition, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after for condition.")
+	_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after for condition.")
 	if err != nil {
 		return nil, err
 	}
 
 	var increment ast.Expr
 
-	if !p.check(scanner.RIGHT_PAREN) {
+	if !p.check(token.RIGHT_PAREN) {
 		increment, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after for clauses.")
+	_, err = p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after for clauses.")
 	if err != nil {
 		return nil, err
 	}
@@ -441,10 +441,10 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 				body,
 				&ast.Expression{
 					Expression: increment,
-					Offset:     ast.Offset(offset),
+					Offset:     offset,
 				},
 			},
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}
 	}
 
@@ -455,7 +455,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 	body = &ast.While{
 		Condition: condition,
 		Body:      body,
-		Offset:    ast.Offset(offset),
+		Offset:    offset,
 	}
 
 	if initializer != nil {
@@ -464,7 +464,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 				initializer,
 				body,
 			},
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}
 	}
 
@@ -478,13 +478,13 @@ func (p *Parser) breakStatement() (*ast.Break, error) {
 		return nil, NewParseErrorWithLog("break statement not within a loop", p.previous())
 	}
 
-	_, err := p.consumeOrError(scanner.SEMICOLON, "Expect ';' after break.")
+	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after break.")
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.Break{
-		Offset: ast.Offset(offset),
+		Offset: offset,
 	}, nil
 }
 
@@ -495,13 +495,13 @@ func (p *Parser) continueStatement() (*ast.Continue, error) {
 		return nil, NewParseErrorWithLog("continue statement not within a loop", p.previous())
 	}
 
-	_, err := p.consumeOrError(scanner.SEMICOLON, "Expect ';' after continue.")
+	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after continue.")
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.Continue{
-		Offset: ast.Offset(offset),
+		Offset: offset,
 	}, nil
 }
 
@@ -511,14 +511,14 @@ func (p *Parser) returnStatement() (*ast.Return, error) {
 	var value ast.Expr
 	var err error
 
-	if !p.check(scanner.SEMICOLON) {
+	if !p.check(token.SEMICOLON) {
 		value, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	_, err = p.consumeOrError(scanner.SEMICOLON, "Expect ';' after return value.")
+	_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after return value.")
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +526,7 @@ func (p *Parser) returnStatement() (*ast.Return, error) {
 	return &ast.Return{
 		Keyword: keyword,
 		Value:   value,
-		Offset:  ast.Offset(keyword.Offset),
+		Offset:  keyword.Offset,
 	}, nil
 }
 
@@ -541,7 +541,7 @@ func (p *Parser) assignment() (ast.Expr, error) {
 		return nil, err
 	}
 
-	if p.match(scanner.EQUAL) {
+	if p.match(token.EQUAL) {
 		equals := p.previous()
 		value, err := p.assignment()
 
@@ -563,7 +563,7 @@ func (p *Parser) assignment() (ast.Expr, error) {
 				Object: get.Object,
 				Name:   get.Name,
 				Value:  value,
-				Offset: ast.Offset(get.Name.Offset),
+				Offset: get.Name.Offset,
 			}, nil
 		}
 
@@ -580,7 +580,7 @@ func (p *Parser) ternary() (ast.Expr, error) {
 		return nil, err
 	}
 
-	if p.match(scanner.QUESTION) {
+	if p.match(token.QUESTION) {
 		firstOp := p.previous()
 		mid, err := p.expression()
 
@@ -588,7 +588,7 @@ func (p *Parser) ternary() (ast.Expr, error) {
 			return nil, err
 		}
 
-		secondOp, err := p.consumeOrError(scanner.COLON, "Expect ':' after expression.")
+		secondOp, err := p.consumeOrError(token.COLON, "Expect ':' after expression.")
 
 		if err != nil {
 			return nil, err
@@ -606,7 +606,7 @@ func (p *Parser) ternary() (ast.Expr, error) {
 			Mid:            mid,
 			SecondOperator: secondOp,
 			Right:          right,
-			Offset:         ast.Offset(firstOp.Offset),
+			Offset:         firstOp.Offset,
 		}, nil
 	}
 
@@ -620,7 +620,7 @@ func (p *Parser) logicOr() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.OR) {
+	for p.match(token.OR) {
 		operator := p.previous()
 		right, err := p.logicAnd()
 
@@ -632,7 +632,7 @@ func (p *Parser) logicOr() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -646,7 +646,7 @@ func (p *Parser) logicAnd() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.AND) {
+	for p.match(token.AND) {
 		operator := p.previous()
 		right, err := p.equality()
 
@@ -658,7 +658,7 @@ func (p *Parser) logicAnd() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -672,7 +672,7 @@ func (p *Parser) equality() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.BANG_EQUAL, scanner.EQUAL_EQUAL) {
+	for p.match(token.BANG_EQUAL, token.EQUAL_EQUAL) {
 		operator := p.previous()
 		right, err := p.comparison()
 
@@ -684,7 +684,7 @@ func (p *Parser) equality() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -698,7 +698,7 @@ func (p *Parser) comparison() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.GREATER, scanner.GREATER_EQUAL, scanner.LESS, scanner.LESS_EQUAL) {
+	for p.match(token.GREATER, token.GREATER_EQUAL, token.LESS, token.LESS_EQUAL) {
 		operator := p.previous()
 		right, err := p.term()
 
@@ -710,7 +710,7 @@ func (p *Parser) comparison() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -724,7 +724,7 @@ func (p *Parser) term() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.MINUS, scanner.PLUS) {
+	for p.match(token.MINUS, token.PLUS) {
 		operator := p.previous()
 		right, err := p.factor()
 
@@ -736,7 +736,7 @@ func (p *Parser) term() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -750,7 +750,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(scanner.SLASH, scanner.STAR) {
+	for p.match(token.SLASH, token.STAR) {
 		operator := p.previous()
 		right, err := p.unary()
 
@@ -762,7 +762,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 			Left:     expr,
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}
 	}
 
@@ -770,7 +770,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 }
 
 func (p *Parser) unary() (ast.Expr, error) {
-	if p.match(scanner.BANG, scanner.MINUS) {
+	if p.match(token.BANG, token.MINUS) {
 		operator := p.previous()
 		right, err := p.unary()
 
@@ -781,7 +781,7 @@ func (p *Parser) unary() (ast.Expr, error) {
 		return &ast.Unary{
 			Operator: operator,
 			Right:    right,
-			Offset:   ast.Offset(operator.Offset),
+			Offset:   operator.Offset,
 		}, nil
 	}
 
@@ -795,13 +795,13 @@ func (p *Parser) call() (ast.Expr, error) {
 	}
 
 	for {
-		if p.match(scanner.LEFT_PAREN) {
+		if p.match(token.LEFT_PAREN) {
 			expr, err = p.finishCall(expr)
 			if err != nil {
 				return nil, err
 			}
-		} else if p.match(scanner.DOT) {
-			name, err := p.consumeOrError(scanner.IDENTIFIER, "Expect property name after '.'.")
+		} else if p.match(token.DOT) {
+			name, err := p.consumeOrError(token.IDENTIFIER, "Expect property name after '.'.")
 			if err != nil {
 				return nil, err
 			}
@@ -809,7 +809,7 @@ func (p *Parser) call() (ast.Expr, error) {
 			expr = &ast.Get{
 				Object: expr,
 				Name:   name,
-				Offset: ast.Offset(name.Offset),
+				Offset: name.Offset,
 			}
 		} else {
 			break
@@ -822,7 +822,7 @@ func (p *Parser) call() (ast.Expr, error) {
 func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 	arguments := make([]ast.Expr, 0)
 
-	if !p.check(scanner.RIGHT_PAREN) {
+	if !p.check(token.RIGHT_PAREN) {
 		for {
 			arg, err := p.expression()
 			if err != nil {
@@ -831,7 +831,7 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 
 			arguments = append(arguments, arg)
 
-			if !p.match(scanner.COMMA) {
+			if !p.match(token.COMMA) {
 				break
 			}
 		}
@@ -841,7 +841,7 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 		return nil, NewParseErrorWithLog("can't have more than 255 arguments", p.peek())
 	}
 
-	paren, err := p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after arguments.")
+	paren, err := p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after arguments.")
 	if err != nil {
 		return nil, err
 	}
@@ -850,63 +850,63 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 		Callee:    callee,
 		Paren:     paren,
 		Arguments: arguments,
-		Offset:    ast.Offset(paren.Offset),
+		Offset:    paren.Offset,
 	}, nil
 }
 
 func (p *Parser) primary() (ast.Expr, error) {
 	offset := p.peek().Offset
 
-	if p.match(scanner.FALSE) {
+	if p.match(token.FALSE) {
 		return &ast.Literal{
 			Value:  false,
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, nil
 	}
 
-	if p.match(scanner.TRUE) {
+	if p.match(token.TRUE) {
 		return &ast.Literal{
 			Value:  true,
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, nil
 	}
 
-	if p.match(scanner.NIL) {
+	if p.match(token.NIL) {
 		return &ast.Literal{
 			Value:  nil,
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, nil
 	}
 
-	if p.match(scanner.THIS) {
+	if p.match(token.THIS) {
 		return &ast.This{
 			Keyword: p.previous(),
-			Offset:  ast.Offset(offset),
+			Offset:  offset,
 		}, nil
 	}
 
-	if p.match(scanner.NUMBER_INT, scanner.NUMBER_REAL, scanner.STRING) {
+	if p.match(token.NUMBER_INT, token.NUMBER_REAL, token.STRING) {
 		return &ast.Literal{
 			Value:  p.previous().Literal,
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, nil
 	}
 
-	if p.match(scanner.IDENTIFIER) {
+	if p.match(token.IDENTIFIER) {
 		return &ast.Variable{
 			Name:   p.previous(),
-			Offset: ast.Offset(offset),
+			Offset: offset,
 		}, nil
 	}
 
-	if p.match(scanner.LEFT_PAREN) {
+	if p.match(token.LEFT_PAREN) {
 		expr, err := p.expression()
 
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = p.consumeOrError(scanner.RIGHT_PAREN, "Expect ')' after expression.")
+		_, err = p.consumeOrError(token.RIGHT_PAREN, "Expect ')' after expression.")
 
 		if err != nil {
 			return nil, err
@@ -914,19 +914,19 @@ func (p *Parser) primary() (ast.Expr, error) {
 
 		return &ast.Grouping{
 			Expression: expr,
-			Offset:     ast.Offset(offset),
+			Offset:     offset,
 		}, nil
 	}
 
-	if p.match(scanner.SUPER) {
+	if p.match(token.SUPER) {
 		keyword := p.previous()
 
-		_, err := p.consumeOrError(scanner.DOT, "Expect '.' after 'super'.")
+		_, err := p.consumeOrError(token.DOT, "Expect '.' after 'super'.")
 		if err != nil {
 			return nil, err
 		}
 
-		method, err := p.consumeOrError(scanner.IDENTIFIER, "Expect superclass method name.")
+		method, err := p.consumeOrError(token.IDENTIFIER, "Expect superclass method name.")
 		if err != nil {
 			return nil, err
 		}
@@ -934,7 +934,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Super{
 			Keyword: keyword,
 			Method:  method,
-			Offset:  ast.Offset(offset),
+			Offset:  offset,
 		}, nil
 	}
 
@@ -945,13 +945,13 @@ func (p *Parser) synchronize() {
 	p.advance()
 
 	for !p.isAtEnd() {
-		if p.previous().TokenType == scanner.SEMICOLON {
+		if p.previous().TokenType == token.SEMICOLON {
 			return
 		}
 
 		switch p.peek().TokenType {
-		case scanner.CLASS, scanner.FUN, scanner.VAR, scanner.FOR,
-			scanner.IF, scanner.WHILE, scanner.PRINT, scanner.RETURN:
+		case token.CLASS, token.FUN, token.VAR, token.FOR,
+			token.IF, token.WHILE, token.PRINT, token.RETURN:
 			return
 		}
 
@@ -963,7 +963,7 @@ func (p *Parser) synchronize() {
 // helpers
 // ----------------------------------------------------------------
 
-func (p *Parser) match(types ...scanner.TokenType) bool {
+func (p *Parser) match(types ...token.TokenType) bool {
 	if slices.ContainsFunc(types, p.check) {
 		p.advance()
 		return true
@@ -972,7 +972,7 @@ func (p *Parser) match(types ...scanner.TokenType) bool {
 	return false
 }
 
-func (p *Parser) check(t scanner.TokenType) bool {
+func (p *Parser) check(t token.TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
@@ -980,7 +980,7 @@ func (p *Parser) check(t scanner.TokenType) bool {
 	return p.peek().TokenType == t
 }
 
-func (p *Parser) advance() *scanner.Token {
+func (p *Parser) advance() *token.Token {
 	if !p.isAtEnd() {
 		p.current++
 	}
@@ -989,18 +989,18 @@ func (p *Parser) advance() *scanner.Token {
 }
 
 func (p *Parser) isAtEnd() bool {
-	return p.peek().TokenType == scanner.EOF
+	return p.peek().TokenType == token.EOF
 }
 
-func (p *Parser) peek() *scanner.Token {
+func (p *Parser) peek() *token.Token {
 	return &p.tokens[p.current]
 }
 
-func (p *Parser) previous() *scanner.Token {
+func (p *Parser) previous() *token.Token {
 	return &p.tokens[p.current-1]
 }
 
-func (p *Parser) consumeOrError(t scanner.TokenType, message string) (*scanner.Token, error) {
+func (p *Parser) consumeOrError(t token.TokenType, message string) (*token.Token, error) {
 	if p.check(t) {
 		return p.advance(), nil
 	}

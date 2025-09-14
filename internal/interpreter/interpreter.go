@@ -3,7 +3,7 @@ package interpreter
 import (
 	"fmt"
 	"internal/ast"
-	"internal/scanner"
+	"internal/token"
 	"internal/util"
 )
 
@@ -113,7 +113,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 	}
 
 	switch expr.Operator.TokenType {
-	case scanner.PLUS:
+	case token.PLUS:
 		if ls, ok := left.(string); ok {
 			if rs, ok := right.(string); ok {
 				return &valueAndError{ls + rs, nil}
@@ -127,51 +127,51 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 			func(a, b int64) any { return a + b },
 			func(a, b float64) any { return a + b },
 		)
-	case scanner.MINUS:
+	case token.MINUS:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a - b },
 			func(a, b float64) any { return a - b },
 		)
-	case scanner.STAR:
+	case token.STAR:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a * b },
 			func(a, b float64) any { return a * b },
 		)
-	case scanner.SLASH:
+	case token.SLASH:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return float64(a) / float64(b) },
 			func(a, b float64) any { return a / b },
 		)
-	case scanner.GREATER:
+	case token.GREATER:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a > b },
 			func(a, b float64) any { return a > b },
 		)
-	case scanner.GREATER_EQUAL:
+	case token.GREATER_EQUAL:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a >= b },
 			func(a, b float64) any { return a >= b },
 		)
-	case scanner.LESS:
+	case token.LESS:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a < b },
 			func(a, b float64) any { return a < b },
 		)
-	case scanner.LESS_EQUAL:
+	case token.LESS_EQUAL:
 		return binaryNumericOp(
 			left, right,
 			func(a, b int64) any { return a <= b },
 			func(a, b float64) any { return a <= b },
 		)
-	case scanner.EQUAL_EQUAL:
+	case token.EQUAL_EQUAL:
 		return &valueAndError{util.IsEqual(left, right), nil}
-	case scanner.BANG_EQUAL:
+	case token.BANG_EQUAL:
 		return &valueAndError{util.IsNotEqual(left, right), nil}
 	}
 
@@ -238,7 +238,7 @@ func (i *Interpreter) VisitLogicalExpr(expr *ast.Logical) any {
 		return &valueAndError{nil, err}
 	}
 
-	if expr.Operator.TokenType == scanner.OR {
+	if expr.Operator.TokenType == token.OR {
 		if util.IsTruthy(left) {
 			return &valueAndError{left, nil}
 		}
@@ -334,7 +334,7 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 	}
 
 	switch expr.Operator.TokenType {
-	case scanner.MINUS:
+	case token.MINUS:
 		if v, ok := right.(int64); ok {
 			return &valueAndError{-v, nil}
 		} else if v, ok := right.(float64); ok {
@@ -342,7 +342,7 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.Unary) any {
 		}
 
 		return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number")}
-	case scanner.BANG:
+	case token.BANG:
 		return &valueAndError{!util.IsTruthy(right), nil}
 	}
 
@@ -354,7 +354,7 @@ func (i *Interpreter) VisitVariableExpr(expr *ast.Variable) any {
 	return &valueAndError{v, err}
 }
 
-func (i *Interpreter) lookupVariable(name *scanner.Token, expr ast.Expr) (any, error) {
+func (i *Interpreter) lookupVariable(name *token.Token, expr ast.Expr) (any, error) {
 	if distance, ok := i.locals[expr]; ok {
 		return i.env.GetAt(distance, name.Lexeme)
 	}

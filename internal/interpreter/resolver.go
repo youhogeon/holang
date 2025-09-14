@@ -3,7 +3,7 @@ package interpreter
 import (
 	"errors"
 	"internal/ast"
-	"internal/scanner"
+	"internal/token"
 	"internal/util/log"
 )
 
@@ -394,7 +394,7 @@ func (r *Resolver) endScope() {
 	r.scopes = r.scopes[:len(r.scopes)-1]
 }
 
-func (r *Resolver) declare(name *scanner.Token) error {
+func (r *Resolver) declare(name *token.Token) error {
 	if len(r.scopes) == 0 {
 		return nil
 	}
@@ -409,7 +409,7 @@ func (r *Resolver) declare(name *scanner.Token) error {
 	return nil
 }
 
-func (r *Resolver) define(name *scanner.Token) {
+func (r *Resolver) define(name *token.Token) {
 	if len(r.scopes) == 0 {
 		return
 	}
@@ -418,7 +418,7 @@ func (r *Resolver) define(name *scanner.Token) {
 	scope[name.Lexeme] = true
 }
 
-func (r *Resolver) resolveLocal(expr ast.Expr, name *scanner.Token) {
+func (r *Resolver) resolveLocal(expr ast.Expr, name *token.Token) {
 	for i := len(r.scopes) - 1; i >= 0; i-- {
 		if _, ok := r.scopes[i][name.Lexeme]; ok {
 			r.interpreter.Resolve(expr, len(r.scopes)-1-i)

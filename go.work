@@ -7,7 +7,9 @@ use (
 	./internal/codegen
 	./internal/interpreter
 	./internal/parser
+	./internal/resolver
 	./internal/scanner
+	./internal/token
 	./internal/util
 	./internal/vm
 )

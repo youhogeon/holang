@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"internal/token"
 	"internal/util/log"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ type Scanner struct {
 	current int
 	line    int
 
-	tokens []Token
+	tokens []token.Token
 }
 
 func NewScanner(source string) *Scanner {
@@ -23,7 +24,7 @@ func NewScanner(source string) *Scanner {
 	}
 }
 
-func (s *Scanner) ScanTokens() ([]Token, []error) {
+func (s *Scanner) ScanTokens() ([]token.Token, []error) {
 	errors := make([]error, 0)
 
 	for !s.isAtEnd() {
@@ -35,7 +36,7 @@ func (s *Scanner) ScanTokens() ([]Token, []error) {
 	}
 
 	s.start = s.current
-	s.addToken(EOF, nil)
+	s.addToken(token.EOF, nil)
 
 	return s.tokens, errors
 }
@@ -49,32 +50,32 @@ func (s *Scanner) scanToken() error {
 	case '\n':
 		s.line++
 	case '(':
-		s.addToken(LEFT_PAREN, nil)
+		s.addToken(token.LEFT_PAREN, nil)
 	case ')':
-		s.addToken(RIGHT_PAREN, nil)
+		s.addToken(token.RIGHT_PAREN, nil)
 	case '{':
-		s.addToken(LEFT_BRACE, nil)
+		s.addToken(token.LEFT_BRACE, nil)
 	case '}':
-		s.addToken(RIGHT_BRACE, nil)
+		s.addToken(token.RIGHT_BRACE, nil)
 	case ',':
-		s.addToken(COMMA, nil)
+		s.addToken(token.COMMA, nil)
 	case '-':
-		s.addToken(MINUS, nil)
+		s.addToken(token.MINUS, nil)
 	case '+':
-		s.addToken(PLUS, nil)
+		s.addToken(token.PLUS, nil)
 	case ':':
-		s.addToken(COLON, nil)
+		s.addToken(token.COLON, nil)
 	case ';':
-		s.addToken(SEMICOLON, nil)
+		s.addToken(token.SEMICOLON, nil)
 	case '?':
-		s.addToken(QUESTION, nil)
+		s.addToken(token.QUESTION, nil)
 	case '/':
 		if s.advanceIfMatch('/') {
 			for s.peek() != '\n' && !s.isAtEnd() {
 				s.advance()
 			}
 
-			s.addToken(COMMENT, string(s.source[s.start+2:s.current]))
+			s.addToken(token.COMMENT, string(s.source[s.start+2:s.current]))
 		} else if s.advanceIfMatch('*') {
 			for {
 				if s.peek() == '\n' {
@@ -87,7 +88,7 @@ func (s *Scanner) scanToken() error {
 				}
 
 				if s.advanceIfMatch('*', '/') {
-					s.addToken(MULTI_COMMENT, string(s.source[s.start+2:s.current-2]))
+					s.addToken(token.MULTI_COMMENT, string(s.source[s.start+2:s.current-2]))
 
 					break
 				}
@@ -95,33 +96,33 @@ func (s *Scanner) scanToken() error {
 				s.advance()
 			}
 		} else {
-			s.addToken(SLASH, nil)
+			s.addToken(token.SLASH, nil)
 		}
 	case '*':
-		s.addToken(STAR, nil)
+		s.addToken(token.STAR, nil)
 	case '!':
 		if s.advanceIfMatch('=') {
-			s.addToken(BANG_EQUAL, nil)
+			s.addToken(token.BANG_EQUAL, nil)
 		} else {
-			s.addToken(BANG, nil)
+			s.addToken(token.BANG, nil)
 		}
 	case '=':
 		if s.advanceIfMatch('=') {
-			s.addToken(EQUAL_EQUAL, nil)
+			s.addToken(token.EQUAL_EQUAL, nil)
 		} else {
-			s.addToken(EQUAL, nil)
+			s.addToken(token.EQUAL, nil)
 		}
 	case '<':
 		if s.advanceIfMatch('=') {
-			s.addToken(LESS_EQUAL, nil)
+			s.addToken(token.LESS_EQUAL, nil)
 		} else {
-			s.addToken(LESS, nil)
+			s.addToken(token.LESS, nil)
 		}
 	case '>':
 		if s.advanceIfMatch('=') {
-			s.addToken(GREATER_EQUAL, nil)
+			s.addToken(token.GREATER_EQUAL, nil)
 		} else {
-			s.addToken(GREATER, nil)
+			s.addToken(token.GREATER, nil)
 		}
 	case '"':
 		// String literal with escape support (\n, \r, \t, \", \\, \uXXXX)
@@ -185,10 +186,10 @@ func (s *Scanner) scanToken() error {
 		}
 
 		// add token including original lexeme slice; literal is decoded content
-		s.addToken(STRING, builder.String())
+		s.addToken(token.STRING, builder.String())
 	case '.':
 		if !s.isDigit(s.peek()) {
-			s.addToken(DOT, nil)
+			s.addToken(token.DOT, nil)
 			break
 		}
 
@@ -232,9 +233,9 @@ func (s *Scanner) scanToken() error {
 			}
 
 			text := string(s.source[s.start:s.current])
-			tokenType, ok := keywords[text]
+			tokenType, ok := token.Keywords[text]
 			if !ok {
-				tokenType = IDENTIFIER
+				tokenType = token.IDENTIFIER
 			}
 
 			s.addToken(tokenType, nil)
@@ -249,14 +250,14 @@ func (s *Scanner) scanToken() error {
 	return nil
 }
 
-func (s *Scanner) addToken(t TokenType, literal any) {
+func (s *Scanner) addToken(t token.TokenType, literal any) {
 	text := s.source[s.start:s.current]
 
-	token := Token{
+	token := token.Token{
 		TokenType: t,
 		Lexeme:    string(text),
 		Literal:   literal,
-		Offset: Offset{
+		Offset: token.Offset{
 			Line:  s.line,
 			Index: s.start,
 		},
@@ -275,7 +276,7 @@ func (s *Scanner) addIntToken() error {
 		return scanErr
 	}
 
-	s.addToken(NUMBER_INT, intVal)
+	s.addToken(token.NUMBER_INT, intVal)
 
 	return nil
 }
@@ -288,7 +289,7 @@ func (s *Scanner) addRealToken() error {
 		return scanErr
 	}
 
-	s.addToken(NUMBER_REAL, realVal)
+	s.addToken(token.NUMBER_REAL, realVal)
 
 	return nil
 }

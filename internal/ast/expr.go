@@ -1,11 +1,7 @@
 package ast
 
-import "internal/scanner"
+import "internal/token"
 
-type Offset struct {
-	Line  int
-	Index int
-}
 type Expr interface {
 	Accept(visitor ExprVisitor) any
 	AcceptString(visitor ExprVisitor) string
@@ -28,9 +24,9 @@ type ExprVisitor interface {
 }
 
 type Assign struct {
-	Name   *scanner.Token
+	Name   *token.Token
 	Value  Expr
-	Offset Offset
+	Offset token.Offset
 }
 
 func (a *Assign) Accept(visitor ExprVisitor) any {
@@ -43,9 +39,9 @@ func (a *Assign) AcceptString(visitor ExprVisitor) string {
 
 type Binary struct {
 	Left     Expr
-	Operator *scanner.Token
+	Operator *token.Token
 	Right    Expr
-	Offset   Offset
+	Offset   token.Offset
 }
 
 func (b *Binary) Accept(visitor ExprVisitor) any {
@@ -58,9 +54,9 @@ func (b *Binary) AcceptString(visitor ExprVisitor) string {
 
 type Call struct {
 	Callee    Expr
-	Paren     *scanner.Token
+	Paren     *token.Token
 	Arguments []Expr
-	Offset    Offset
+	Offset    token.Offset
 }
 
 func (c *Call) Accept(visitor ExprVisitor) any {
@@ -73,8 +69,8 @@ func (c *Call) AcceptString(visitor ExprVisitor) string {
 
 type Get struct {
 	Object Expr
-	Name   *scanner.Token
-	Offset Offset
+	Name   *token.Token
+	Offset token.Offset
 }
 
 func (g *Get) Accept(visitor ExprVisitor) any {
@@ -87,7 +83,7 @@ func (g *Get) AcceptString(visitor ExprVisitor) string {
 
 type Grouping struct {
 	Expression Expr
-	Offset     Offset
+	Offset     token.Offset
 }
 
 func (g *Grouping) Accept(visitor ExprVisitor) any {
@@ -100,7 +96,7 @@ func (g *Grouping) AcceptString(visitor ExprVisitor) string {
 
 type Literal struct {
 	Value  any
-	Offset Offset
+	Offset token.Offset
 }
 
 func (l *Literal) Accept(visitor ExprVisitor) any {
@@ -113,9 +109,9 @@ func (l *Literal) AcceptString(visitor ExprVisitor) string {
 
 type Logical struct {
 	Left     Expr
-	Operator *scanner.Token
+	Operator *token.Token
 	Right    Expr
-	Offset   Offset
+	Offset   token.Offset
 }
 
 func (l *Logical) Accept(visitor ExprVisitor) any {
@@ -128,9 +124,9 @@ func (l *Logical) AcceptString(visitor ExprVisitor) string {
 
 type Set struct {
 	Object Expr
-	Name   *scanner.Token
+	Name   *token.Token
 	Value  Expr
-	Offset Offset
+	Offset token.Offset
 }
 
 func (s *Set) Accept(visitor ExprVisitor) any {
@@ -142,9 +138,9 @@ func (s *Set) AcceptString(visitor ExprVisitor) string {
 }
 
 type Super struct {
-	Keyword *scanner.Token
-	Method  *scanner.Token
-	Offset  Offset
+	Keyword *token.Token
+	Method  *token.Token
+	Offset  token.Offset
 }
 
 func (s *Super) Accept(visitor ExprVisitor) any {
@@ -156,8 +152,8 @@ func (s *Super) AcceptString(visitor ExprVisitor) string {
 }
 
 type This struct {
-	Keyword *scanner.Token
-	Offset  Offset
+	Keyword *token.Token
+	Offset  token.Offset
 }
 
 func (t *This) Accept(visitor ExprVisitor) any {
@@ -170,11 +166,11 @@ func (t *This) AcceptString(visitor ExprVisitor) string {
 
 type Ternary struct {
 	Left           Expr
-	FirstOperator  *scanner.Token
+	FirstOperator  *token.Token
 	Mid            Expr
-	SecondOperator *scanner.Token
+	SecondOperator *token.Token
 	Right          Expr
-	Offset         Offset
+	Offset         token.Offset
 }
 
 func (u *Ternary) Accept(visitor ExprVisitor) any {
@@ -186,9 +182,9 @@ func (u *Ternary) AcceptString(visitor ExprVisitor) string {
 }
 
 type Unary struct {
-	Operator *scanner.Token
+	Operator *token.Token
 	Right    Expr
-	Offset   Offset
+	Offset   token.Offset
 }
 
 func (u *Unary) Accept(visitor ExprVisitor) any {
@@ -200,8 +196,8 @@ func (u *Unary) AcceptString(visitor ExprVisitor) string {
 }
 
 type Variable struct {
-	Name   *scanner.Token
-	Offset Offset
+	Name   *token.Token
+	Offset token.Offset
 }
 
 func (v *Variable) Accept(visitor ExprVisitor) any {

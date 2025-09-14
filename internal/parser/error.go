@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"internal/scanner"
+	"internal/token"
 	"internal/util/log"
 )
 
@@ -9,7 +9,7 @@ type ParseError struct {
 	Message string
 }
 
-func NewParseErrorWithLog(message string, token *scanner.Token) *ParseError {
+func NewParseErrorWithLog(message string, token *token.Token) *ParseError {
 	err := &ParseError{
 		Message: message,
 	}

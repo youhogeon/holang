@@ -2,7 +2,7 @@ package ast
 
 import (
 	"fmt"
-	"internal/scanner"
+	"internal/token"
 	"strings"
 )
 
@@ -196,7 +196,7 @@ func (p *AstPrinter) transform(builder *strings.Builder, parts ...any) {
 			builder.WriteString(v.AcceptString(p))
 		case Stmt:
 			builder.WriteString(v.AcceptString(p))
-		case scanner.Token:
+		case token.Token:
 			builder.WriteString(v.Lexeme)
 		case []Expr:
 			for _, exprItem := range v {
@@ -206,7 +206,7 @@ func (p *AstPrinter) transform(builder *strings.Builder, parts ...any) {
 			for _, stmtItem := range v {
 				p.transform(builder, stmtItem)
 			}
-		case []scanner.Token:
+		case []token.Token:
 			for _, tokenItem := range v {
 				p.transform(builder, tokenItem)
 			}
