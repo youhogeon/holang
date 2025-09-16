@@ -243,9 +243,7 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 	}
 
 	popCnt := g.bindings[stmt.NodeId].Slot
-	for i := 0; i < popCnt; i++ {
-		g.emit(stmt.Offset, bytecode.OP_POP)
-	}
+	g.emit(stmt.Offset, bytecode.OP_POPN, int64(popCnt))
 
 	return nil
 }
@@ -294,14 +292,14 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 	if stmt.Initializer == nil {
 		g.emit(stmt.Offset, bytecode.OP_NIL)
 	} else {
-		// initializer에 의해 stack에 값이 이미 올라감
+		// initializer에 의해 stack에 값이 올라감
 		if err := stmt.Initializer.Accept(g); err != nil {
 			return err
 		}
 	}
 
 	if binding.Kind == resolver.BindLocal {
-		g.emit(stmt.Offset, bytecode.OP_SET_LOCAL, int64(binding.Slot))
+		// stack에 값이 있으므로, OP_SET_LOCAL 불필요
 		return nil
 	}
 
