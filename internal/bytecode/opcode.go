@@ -52,6 +52,7 @@ const (
 	// SPECIAL
 	OP_RETURN
 	OP_POP
+	OP_POPN
 	OP_PRINT
 )
 
@@ -62,6 +63,7 @@ var operandsCount = map[OpCode]int{
 	OP_SET_GLOBAL:    1,
 	OP_GET_LOCAL:     1,
 	OP_SET_LOCAL:     1,
+	OP_POPN:          1,
 }
 
 func (op OpCode) OperandsCount() int {

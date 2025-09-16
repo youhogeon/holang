@@ -47,6 +47,7 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	// SPECIAL
 	(*VM).OP_RETURN,
 	(*VM).OP_POP,
+	(*VM).OP_POPN,
 	(*VM).OP_PRINT,
 }
 
@@ -376,11 +377,17 @@ func (vm *VM) OP_SET_GLOBAL() InterpretResult {
 }
 
 func (vm *VM) OP_GET_LOCAL() InterpretResult {
-	return InterpretResultRuntimeError
+	slot := vm.getOperand()
+	vm.push(vm.stack[slot])
+
+	return InterpretResultOK
 }
 
 func (vm *VM) OP_SET_LOCAL() InterpretResult {
-	return InterpretResultRuntimeError
+	slot := vm.getOperand()
+	vm.stack[slot] = vm.peek(0)
+
+	return InterpretResultOK
 }
 
 // ================================================================
@@ -393,6 +400,13 @@ func (vm *VM) OP_RETURN() InterpretResult {
 
 func (vm *VM) OP_POP() InterpretResult {
 	vm.pop()
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_POPN() InterpretResult {
+	n := vm.getOperand()
+	vm.popN(int(n))
 
 	return InterpretResultOK
 }

@@ -80,9 +80,22 @@ func (vm *VM) push(value bytecode.Value) {
 	vm.stack = append(vm.stack, value)
 }
 
-func (vm *VM) pop() bytecode.Value {
+func (vm *VM) peek(idx int) bytecode.Value {
 	stackTop := len(vm.stack) - 1
+
+	return vm.stack[stackTop-idx]
+}
+
+func (vm *VM) pop() bytecode.Value {
+	return vm.popN(1)
+}
+
+func (vm *VM) popN(n int) bytecode.Value {
+	stackTop := len(vm.stack) - n
+
 	if stackTop < 0 {
+		vm.stack = vm.stack[:0]
+
 		return nil
 	}
 
@@ -95,14 +108,7 @@ func (vm *VM) pop() bytecode.Value {
 func (vm *VM) run() InterpretResult {
 	for vm.ip < vm.chunk.Size() {
 		instruction := vm.getOp()
-
-		log.DebugIfEnabled("VM run", func() []log.Field {
-			return []log.Field{
-				log.I("ip", vm.ip-1),
-				log.A("instruction", instruction),
-				log.A("stack", vm.stack),
-			}
-		})
+		ip := vm.ip - 1
 
 		fn := OP_FUNCS[instruction]
 		if fn == nil {
@@ -112,6 +118,17 @@ func (vm *VM) run() InterpretResult {
 		}
 
 		result := fn(vm)
+
+		log.DebugIfEnabled("VM run completed", func() []log.Field {
+			return []log.Field{
+				log.I("ip", ip),
+				log.A("instruction", instruction),
+				log.A("stack", vm.stack),
+				log.A("result", result),
+				log.A("globals", vm.globals),
+			}
+		})
+
 		if result != InterpretResultOK {
 			return result
 		}

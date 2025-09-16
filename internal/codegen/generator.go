@@ -4,16 +4,19 @@ import (
 	"errors"
 	"internal/ast"
 	"internal/bytecode"
+	"internal/resolver"
 	"internal/token"
 )
 
 type CodeGenerator struct {
-	em Emitter
+	em       Emitter
+	bindings resolver.BindingResult
 }
 
-func NewCodeGenerator(em Emitter) *CodeGenerator {
+func NewCodeGenerator(em Emitter, bindings resolver.BindingResult) *CodeGenerator {
 	return &CodeGenerator{
-		em: em,
+		em:       em,
+		bindings: bindings,
 	}
 }
 
@@ -101,8 +104,16 @@ func (g *CodeGenerator) makeConstant(value bytecode.Value) int64 {
 // ================================================================
 
 func (g *CodeGenerator) VisitAssignExpr(expr *ast.Assign) any {
+	binding := g.bindings[expr.NodeId]
+
 	if err := expr.Value.Accept(g); err != nil {
 		return err
+	}
+
+	if binding.Kind == resolver.BindLocal {
+		g.emit(expr.Offset, bytecode.OP_SET_LOCAL, int64(binding.Slot))
+
+		return nil
 	}
 
 	constant := g.makeConstant(expr.Name.Lexeme)
@@ -206,6 +217,14 @@ func (g *CodeGenerator) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
+	binding := g.bindings[expr.NodeId]
+
+	if binding.Kind == resolver.BindLocal {
+		g.emit(expr.Offset, bytecode.OP_GET_LOCAL, int64(binding.Slot))
+
+		return nil
+	}
+
 	constant := g.makeConstant(expr.Name.Lexeme)
 	g.emit(expr.Offset, bytecode.OP_GET_GLOBAL, constant)
 
@@ -217,6 +236,17 @@ func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 // ================================================================
 
 func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
+	for _, s := range stmt.Statements {
+		if err := g.genStmt(s); err != nil {
+			return err
+		}
+	}
+
+	popCnt := g.bindings[stmt.NodeId].Slot
+	for i := 0; i < popCnt; i++ {
+		g.emit(stmt.Offset, bytecode.OP_POP)
+	}
+
 	return nil
 }
 
@@ -259,12 +289,20 @@ func (g *CodeGenerator) VisitReturnStmt(stmt *ast.Return) any {
 }
 
 func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
+	binding := g.bindings[stmt.NodeId]
+
 	if stmt.Initializer == nil {
-		g.emitConstant(stmt.Offset, nil)
+		g.emit(stmt.Offset, bytecode.OP_NIL)
 	} else {
+		// initializer에 의해 stack에 값이 이미 올라감
 		if err := stmt.Initializer.Accept(g); err != nil {
 			return err
 		}
+	}
+
+	if binding.Kind == resolver.BindLocal {
+		g.emit(stmt.Offset, bytecode.OP_SET_LOCAL, int64(binding.Slot))
+		return nil
 	}
 
 	constant := g.makeConstant(stmt.Name.Lexeme)

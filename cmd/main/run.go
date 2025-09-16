@@ -124,7 +124,7 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 
 	ch := bytecode.NewChunk()
 	em := codegen.NewChunkEmitter(ch)
-	gen := codegen.NewCodeGenerator(em)
+	gen := codegen.NewCodeGenerator(em, bindings)
 
 	if err := gen.Generate(statements); err != nil {
 		log.Error("Codegen error", log.E(err))

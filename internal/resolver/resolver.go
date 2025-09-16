@@ -16,11 +16,12 @@ type BindingKind uint8
 const (
 	BindGlobal BindingKind = iota
 	BindLocal
+	Block
 )
 
 type Binding struct {
 	Kind BindingKind
-	Slot int // Local 슬롯 인덱스. Global이면 -1
+	Slot int // Local 슬롯 인덱스. Global이면 -1, Block이면 Block 안의 local 개수
 }
 
 type BindingResult map[ast.NodeIdType]Binding
@@ -78,6 +79,7 @@ func (r *Resolver) endScope() {
 
 	for len(r.locals) > 0 && r.locals[len(r.locals)-1].Depth >= r.scopeDepth {
 		r.locals = r.locals[:len(r.locals)-1]
+		r.nextSlot--
 	}
 
 	r.scopeDepth--
@@ -281,11 +283,20 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
 func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 	r.beginScope()
 
+	prevSlot := r.nextSlot
+
 	for _, s := range stmt.Statements {
 		s.Accept(r)
 	}
 
+	localCnt := r.nextSlot - prevSlot
+
 	r.endScope()
+
+	r.bindings[stmt.NodeId] = Binding{
+		Kind: Block,
+		Slot: localCnt,
+	}
 
 	return nil
 }
