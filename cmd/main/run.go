@@ -8,6 +8,7 @@ import (
 	"internal/codegen"
 	interpreter_ "internal/interpreter"
 	"internal/parser"
+	"internal/resolver"
 	"internal/scanner"
 	"internal/util/log"
 	vm_ "internal/vm"
@@ -94,8 +95,8 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 		interpreter = interpreter_.NewInterpreter()
 	}
 
-	resolver := interpreter_.NewResolver(interpreter)
-	err := resolver.Resolve(statements)
+	r_ := interpreter_.NewResolver(interpreter)
+	err := r_.Resolve(statements)
 
 	log.Debug("Resolve complete", log.E(err))
 
@@ -103,8 +104,18 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 		err = interpreter.Interpret(statements)
 
 		log.Debug("Interpret complete", log.E(err))
-	} else {
-		log.Error("Resolve error", log.E(err))
+	}
+
+	// ================================================================
+	// Resolve
+	// ================================================================
+	r := resolver.NewResolver()
+	bindings, errs := r.Resolve(statements)
+
+	log.Debug("Resolve complete", log.A("bindings", bindings), log.A("errors", errs))
+
+	if len(errs) > 0 {
+		return
 	}
 
 	// ================================================================
