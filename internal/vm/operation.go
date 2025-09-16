@@ -41,6 +41,8 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_DEFINE_GLOBAL,
 	(*VM).OP_GET_GLOBAL,
 	(*VM).OP_SET_GLOBAL,
+	(*VM).OP_GET_LOCAL,
+	(*VM).OP_SET_LOCAL,
 
 	// SPECIAL
 	(*VM).OP_RETURN,
@@ -370,6 +372,14 @@ func (vm *VM) OP_SET_GLOBAL() InterpretResult {
 
 	log.Error("Undefined variable", log.A("name", name))
 
+	return InterpretResultRuntimeError
+}
+
+func (vm *VM) OP_GET_LOCAL() InterpretResult {
+	return InterpretResultRuntimeError
+}
+
+func (vm *VM) OP_SET_LOCAL() InterpretResult {
 	return InterpretResultRuntimeError
 }
 

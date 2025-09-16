@@ -46,6 +46,8 @@ const (
 	OP_DEFINE_GLOBAL
 	OP_GET_GLOBAL
 	OP_SET_GLOBAL
+	OP_GET_LOCAL
+	OP_SET_LOCAL
 
 	// SPECIAL
 	OP_RETURN
@@ -58,6 +60,8 @@ var operandsCount = map[OpCode]int{
 	OP_DEFINE_GLOBAL: 1,
 	OP_GET_GLOBAL:    1,
 	OP_SET_GLOBAL:    1,
+	OP_GET_LOCAL:     1,
+	OP_SET_LOCAL:     1,
 }
 
 func (op OpCode) OperandsCount() int {
