@@ -8,6 +8,8 @@ import (
 	"internal/token"
 )
 
+const _POPN_THRESHOLD = 3
+
 type CodeGenerator struct {
 	em       Emitter
 	bindings resolver.BindingResult
@@ -243,7 +245,16 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 	}
 
 	popCnt := g.bindings[stmt.NodeId].Slot
-	g.emit(stmt.Offset, bytecode.OP_POPN, int64(popCnt))
+
+	if popCnt >= _POPN_THRESHOLD {
+		g.emit(stmt.Offset, bytecode.OP_POPN, int64(popCnt))
+
+		return nil
+	}
+
+	for range popCnt {
+		g.emit(stmt.Offset, bytecode.OP_POP)
+	}
 
 	return nil
 }
