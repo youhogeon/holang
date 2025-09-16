@@ -74,7 +74,8 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	p := parser.NewParser(tokens)
 	printer := ast.NewAstPrinter()
 
-	statements, errs := p.Parse()
+	program, errs := p.Parse()
+	statements := program.Statements
 
 	log.Debug("Parse complete", log.A("ast", statements), log.A("errors", errs))
 
