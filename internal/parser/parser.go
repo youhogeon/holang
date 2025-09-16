@@ -52,11 +52,11 @@ func (p *Parser) Parse() (*ast.Program, []error) {
 	return program, errors
 }
 
-func (p *Parser) getNodeId() int {
+func (p *Parser) getNodeId() ast.NodeIdType {
 	id := p.nextId
 	p.nextId++
 
-	return id
+	return ast.NodeIdType(id)
 }
 
 func (p *Parser) declaration() (ast.Stmt, error) {

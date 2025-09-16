@@ -23,6 +23,8 @@ type Binding struct {
 	Slot int // Local 슬롯 인덱스. Global이면 -1
 }
 
+type BindingResult map[ast.NodeIdType]Binding
+
 // ================================================================
 // Resolver
 // ================================================================
@@ -38,7 +40,7 @@ type Resolver struct {
 	nextSlot   int
 	scopeDepth int
 
-	bindings map[int]Binding
+	bindings BindingResult
 	errors   []error
 }
 
@@ -51,11 +53,11 @@ func (r *Resolver) clear() {
 	r.nextSlot = 0
 	r.scopeDepth = 0
 
-	r.bindings = make(map[int]Binding)
+	r.bindings = make(BindingResult)
 	r.errors = r.errors[:0]
 }
 
-func (r *Resolver) Resolve(statements []ast.Stmt) (map[int]Binding, []error) {
+func (r *Resolver) Resolve(statements []ast.Stmt) (BindingResult, []error) {
 	r.clear()
 
 	for _, stmt := range statements {
