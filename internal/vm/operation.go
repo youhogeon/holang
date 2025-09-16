@@ -372,7 +372,7 @@ func (vm *VM) OP_GET_GLOBAL() InterpretResult {
 func (vm *VM) OP_SET_GLOBAL() InterpretResult {
 	name := vm.getConstant()
 	if _, ok := vm.globals[name.(string)]; ok {
-		value := vm.pop()
+		value := vm.peek(0)
 		vm.globals[name.(string)] = value
 
 		return InterpretResultOK
@@ -427,7 +427,7 @@ func (vm *VM) OP_JUMP() InterpretResult {
 }
 
 func (vm *VM) OP_JUMP_IF_FALSE() InterpretResult {
-	condition := vm.pop()
+	condition := vm.peek(0)
 	n := vm.getOperand()
 
 	if !util.IsTruthy(condition) {

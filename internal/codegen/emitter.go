@@ -8,7 +8,7 @@ import (
 )
 
 type Emitter interface {
-	Emit(offset token.Offset, op bytecode.OpCode, operands ...int64)
+	Emit(offset token.Offset, op bytecode.OpCode, operands ...int64) int
 	MakeConstant(value bytecode.Value) int64
 	EmitJump(offset token.Offset, op bytecode.OpCode) int
 	PatchJump(at int)
@@ -25,8 +25,11 @@ func NewChunkEmitter(chunk *bytecode.Chunk) *ChunkEmitter {
 	}
 }
 
-func (e *ChunkEmitter) Emit(offset token.Offset, op bytecode.OpCode, operands ...int64) {
+func (e *ChunkEmitter) Emit(offset token.Offset, op bytecode.OpCode, operands ...int64) int {
+	at := e.chunk.Size()
 	e.chunk.AddOperator(offset, op, operands...)
+
+	return at
 }
 
 func (e *ChunkEmitter) MakeConstant(value bytecode.Value) int64 {
@@ -42,7 +45,7 @@ func (e *ChunkEmitter) EmitJump(offset token.Offset, op bytecode.OpCode) int {
 }
 
 func (e *ChunkEmitter) PatchJump(at int) {
-	jump := e.chunk.Size() - at - 3
+	jump := e.chunk.Size() - at - 4
 
 	tmp := make([]byte, binary.MaxVarintLen32)
 	k := binary.PutVarint(tmp, int64(jump))

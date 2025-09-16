@@ -52,12 +52,12 @@ func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 	return nil
 }
 
-func (g *CodeGenerator) _emit(op bytecode.OpCode, operands ...int64) {
-	g.em.Emit(token.Offset{Line: -1, Index: -1}, op, operands...)
+func (g *CodeGenerator) _emit(op bytecode.OpCode, operands ...int64) int {
+	return g.em.Emit(token.Offset{Line: -1, Index: -1}, op, operands...)
 }
 
-func (g *CodeGenerator) emit(offset token.Offset, op bytecode.OpCode, operands ...int64) {
-	g.em.Emit(offset, op, operands...)
+func (g *CodeGenerator) emit(offset token.Offset, op bytecode.OpCode, operands ...int64) int {
+	return g.em.Emit(offset, op, operands...)
 }
 
 func (g *CodeGenerator) emitJump(offset token.Offset, op bytecode.OpCode) int {
@@ -188,6 +188,33 @@ func (g *CodeGenerator) VisitLiteralExpr(expr *ast.Literal) any {
 }
 
 func (g *CodeGenerator) VisitLogicalExpr(expr *ast.Logical) any {
+	if err := expr.Left.Accept(g); err != nil {
+		return err
+	}
+
+	if expr.Operator.TokenType == token.OR {
+		elseJump := g.emitJump(expr.Offset, bytecode.OP_JUMP_IF_FALSE)
+		endJump := g.emitJump(expr.Offset, bytecode.OP_JUMP)
+
+		g.patchJump(elseJump)
+		g.emit(expr.Offset, bytecode.OP_POP)
+
+		if err := expr.Right.Accept(g); err != nil {
+			return err
+		}
+
+		g.patchJump(endJump)
+	} else {
+		endJump := g.emitJump(expr.Offset, bytecode.OP_JUMP_IF_FALSE)
+
+		g.emit(expr.Offset, bytecode.OP_POP)
+		if err := expr.Right.Accept(g); err != nil {
+			return err
+		}
+
+		g.patchJump(endJump)
+	}
+
 	return nil
 }
 
@@ -290,15 +317,15 @@ func (g *CodeGenerator) VisitIfStmt(stmt *ast.If) any {
 		return err
 	}
 
-	thenJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP_IF_FALSE)
+	elseJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP_IF_FALSE)
 	g.emit(stmt.Offset, bytecode.OP_POP)
 
 	if err := stmt.ThenBranch.Accept(g); err != nil {
 		return err
 	}
 
-	elseJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
-	g.patchJump(thenJump)
+	endJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	g.patchJump(elseJump)
 	g.emit(stmt.Offset, bytecode.OP_POP)
 
 	if stmt.ElseBranch != nil {
@@ -307,7 +334,7 @@ func (g *CodeGenerator) VisitIfStmt(stmt *ast.If) any {
 		}
 	}
 
-	g.patchJump(elseJump)
+	g.patchJump(endJump)
 
 	return nil
 }
