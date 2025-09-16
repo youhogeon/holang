@@ -49,10 +49,17 @@ const (
 	OP_GET_LOCAL
 	OP_SET_LOCAL
 
-	// SPECIAL
-	OP_RETURN
+	// STACK
 	OP_POP
 	OP_POPN
+
+	// JUMP
+	OP_JUMP
+	OP_JUMP_IF_FALSE
+	OP_LOOP
+
+	// SPECIAL
+	OP_RETURN
 	OP_PRINT
 )
 
@@ -64,6 +71,8 @@ var operandsCount = map[OpCode]int{
 	OP_GET_LOCAL:     1,
 	OP_SET_LOCAL:     1,
 	OP_POPN:          1,
+	OP_JUMP:          1,
+	OP_JUMP_IF_FALSE: 1,
 }
 
 func (op OpCode) OperandsCount() int {

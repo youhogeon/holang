@@ -31,7 +31,7 @@ func (g *CodeGenerator) Generate(statements []ast.Stmt) error {
 		}
 	}
 
-	g.emit_(bytecode.OP_RETURN)
+	g._emit(bytecode.OP_RETURN)
 
 	return nil
 }
@@ -52,12 +52,20 @@ func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 	return nil
 }
 
-func (g *CodeGenerator) emit_(op bytecode.OpCode, operands ...int64) {
+func (g *CodeGenerator) _emit(op bytecode.OpCode, operands ...int64) {
 	g.em.Emit(token.Offset{Line: -1, Index: -1}, op, operands...)
 }
 
 func (g *CodeGenerator) emit(offset token.Offset, op bytecode.OpCode, operands ...int64) {
 	g.em.Emit(offset, op, operands...)
+}
+
+func (g *CodeGenerator) emitJump(offset token.Offset, op bytecode.OpCode) int {
+	return g.em.EmitJump(offset, op)
+}
+
+func (g *CodeGenerator) patchJump(at int) {
+	g.em.PatchJump(at)
 }
 
 func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
@@ -278,6 +286,29 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 }
 
 func (g *CodeGenerator) VisitIfStmt(stmt *ast.If) any {
+	if err := stmt.Condition.Accept(g); err != nil {
+		return err
+	}
+
+	thenJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP_IF_FALSE)
+	g.emit(stmt.Offset, bytecode.OP_POP)
+
+	if err := stmt.ThenBranch.Accept(g); err != nil {
+		return err
+	}
+
+	elseJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	g.patchJump(thenJump)
+	g.emit(stmt.Offset, bytecode.OP_POP)
+
+	if stmt.ElseBranch != nil {
+		if err := stmt.ElseBranch.Accept(g); err != nil {
+			return err
+		}
+	}
+
+	g.patchJump(elseJump)
+
 	return nil
 }
 

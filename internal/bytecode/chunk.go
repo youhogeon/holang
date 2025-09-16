@@ -77,6 +77,10 @@ func (c *Chunk) Size() int {
 	return len(c.code)
 }
 
+func (c *Chunk) OverWrite(at int, value byte) {
+	c.code[at] = value
+}
+
 func (c *Chunk) Disassemble() []string {
 	var dis []string
 

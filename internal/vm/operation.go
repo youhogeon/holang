@@ -44,10 +44,17 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_GET_LOCAL,
 	(*VM).OP_SET_LOCAL,
 
-	// SPECIAL
-	(*VM).OP_RETURN,
+	// STACK
 	(*VM).OP_POP,
 	(*VM).OP_POPN,
+
+	// JUMP
+	(*VM).OP_JUMP,
+	(*VM).OP_JUMP_IF_FALSE,
+	(*VM).OP_LOOP,
+
+	// SPECIAL
+	(*VM).OP_RETURN,
 	(*VM).OP_PRINT,
 }
 
@@ -391,12 +398,8 @@ func (vm *VM) OP_SET_LOCAL() InterpretResult {
 }
 
 // ================================================================
-// SPECIAL
+// STACK
 // ================================================================
-
-func (vm *VM) OP_RETURN() InterpretResult {
-	return InterpretResultOK
-}
 
 func (vm *VM) OP_POP() InterpretResult {
 	vm.pop()
@@ -408,6 +411,42 @@ func (vm *VM) OP_POPN() InterpretResult {
 	n := vm.getOperand()
 	vm.popN(int(n))
 
+	return InterpretResultOK
+}
+
+// ================================================================
+// JUMP
+// ================================================================
+
+func (vm *VM) OP_JUMP() InterpretResult {
+	n := vm.getOperand()
+
+	vm.ip += int(n)
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_JUMP_IF_FALSE() InterpretResult {
+	condition := vm.pop()
+	n := vm.getOperand()
+
+	if !util.IsTruthy(condition) {
+		vm.ip += int(n)
+	}
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_LOOP() InterpretResult {
+
+	return InterpretResultOK
+}
+
+// ================================================================
+// SPECIAL
+// ================================================================
+
+func (vm *VM) OP_RETURN() InterpretResult {
 	return InterpretResultOK
 }
 
