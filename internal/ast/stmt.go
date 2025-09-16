@@ -24,6 +24,7 @@ type StmtVisitor interface {
 type Block struct {
 	Statements []Stmt
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (s *Block) Accept(visitor StmtVisitor) any {
@@ -39,6 +40,7 @@ type Class struct {
 	Superclass *Variable
 	Methods    []*Function
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (c *Class) Accept(visitor StmtVisitor) any {
@@ -52,6 +54,7 @@ func (c *Class) AcceptString(visitor StmtVisitor) string {
 type Expression struct {
 	Expression Expr
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (s *Expression) Accept(visitor StmtVisitor) any {
@@ -67,6 +70,7 @@ type Function struct {
 	Params []*token.Token
 	Body   []Stmt
 	Offset token.Offset
+	NodeId int
 }
 
 func (f *Function) Accept(visitor StmtVisitor) any {
@@ -82,6 +86,7 @@ type If struct {
 	ThenBranch Stmt
 	ElseBranch Stmt
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (s *If) Accept(visitor StmtVisitor) any {
@@ -95,6 +100,7 @@ func (s *If) AcceptString(visitor StmtVisitor) string {
 type Print struct {
 	Expression Expr
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (s *Print) Accept(visitor StmtVisitor) any {
@@ -109,6 +115,7 @@ type Return struct {
 	Keyword *token.Token
 	Value   Expr
 	Offset  token.Offset
+	NodeId  int
 }
 
 func (s *Return) Accept(visitor StmtVisitor) any {
@@ -123,6 +130,7 @@ type Var struct {
 	Name        *token.Token
 	Initializer Expr
 	Offset      token.Offset
+	NodeId      int
 }
 
 func (s *Var) Accept(visitor StmtVisitor) any {
@@ -137,6 +145,7 @@ type While struct {
 	Condition Expr
 	Body      Stmt
 	Offset    token.Offset
+	NodeId    int
 }
 
 func (s *While) Accept(visitor StmtVisitor) any {
@@ -149,6 +158,7 @@ func (s *While) AcceptString(visitor StmtVisitor) string {
 
 type Break struct {
 	Offset token.Offset
+	NodeId int
 }
 
 func (s *Break) Accept(visitor StmtVisitor) any {
@@ -161,6 +171,7 @@ func (s *Break) AcceptString(visitor StmtVisitor) string {
 
 type Continue struct {
 	Offset token.Offset
+	NodeId int
 }
 
 func (s *Continue) Accept(visitor StmtVisitor) any {

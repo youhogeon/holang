@@ -10,6 +10,8 @@ type Parser struct {
 	tokens    []token.Token
 	current   int
 	loopDepth int
+
+	nextId int
 }
 
 func NewParser(tokens []token.Token) *Parser {
@@ -25,7 +27,7 @@ func NewParser(tokens []token.Token) *Parser {
 	}
 }
 
-func (p *Parser) Parse() ([]ast.Stmt, []error) {
+func (p *Parser) Parse() (*ast.Program, []error) {
 	statements := make([]ast.Stmt, 0)
 	errors := make([]error, 0)
 
@@ -43,7 +45,18 @@ func (p *Parser) Parse() ([]ast.Stmt, []error) {
 		statements = append(statements, stmt)
 	}
 
-	return statements, errors
+	program := &ast.Program{
+		Statements: statements,
+	}
+
+	return program, errors
+}
+
+func (p *Parser) getNodeId() int {
+	id := p.nextId
+	p.nextId++
+
+	return id
 }
 
 func (p *Parser) declaration() (ast.Stmt, error) {
@@ -88,6 +101,7 @@ func (p *Parser) varDecl() (*ast.Var, error) {
 		Name:        name,
 		Initializer: initializer,
 		Offset:      name.Offset,
+		NodeId:      p.getNodeId(),
 	}, nil
 }
 
@@ -108,6 +122,7 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		superclass = &ast.Variable{
 			Name:   superToken,
 			Offset: superToken.Offset,
+			NodeId: p.getNodeId(),
 		}
 
 		if name.Lexeme == superToken.Lexeme {
@@ -141,6 +156,7 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 		Methods:    methods,
 		Superclass: superclass,
 		Offset:     name.Offset,
+		NodeId:     p.getNodeId(),
 	}, nil
 }
 
@@ -196,6 +212,7 @@ func (p *Parser) funDecl() (*ast.Function, error) {
 		Params: parameters,
 		Body:   body.Statements,
 		Offset: name.Offset,
+		NodeId: p.getNodeId(),
 	}, nil
 }
 
@@ -246,6 +263,7 @@ func (p *Parser) block() (*ast.Block, error) {
 		if err != nil {
 			return &ast.Block{
 				Offset: offset,
+				NodeId: p.getNodeId(),
 			}, err
 		}
 
@@ -256,12 +274,14 @@ func (p *Parser) block() (*ast.Block, error) {
 	if err != nil {
 		return &ast.Block{
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, err
 	}
 
 	return &ast.Block{
 		Statements: statements,
 		Offset:     offset,
+		NodeId:     p.getNodeId(),
 	}, nil
 }
 
@@ -282,6 +302,7 @@ func (p *Parser) exprStatement() (*ast.Expression, error) {
 	return &ast.Expression{
 		Expression: expr,
 		Offset:     offset,
+		NodeId:     p.getNodeId(),
 	}, nil
 }
 
@@ -302,6 +323,7 @@ func (p *Parser) printStatement() (*ast.Print, error) {
 	return &ast.Print{
 		Expression: expr,
 		Offset:     offset,
+		NodeId:     p.getNodeId(),
 	}, nil
 }
 
@@ -341,6 +363,7 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 		ThenBranch: thenBranch,
 		ElseBranch: elseBranch,
 		Offset:     offset,
+		NodeId:     p.getNodeId(),
 	}, nil
 }
 
@@ -373,6 +396,7 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 		Condition: condition,
 		Body:      branch,
 		Offset:    offset,
+		NodeId:    p.getNodeId(),
 	}, nil
 }
 
@@ -442,9 +466,11 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 				&ast.Expression{
 					Expression: increment,
 					Offset:     offset,
+					NodeId:     p.getNodeId(),
 				},
 			},
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}
 	}
 
@@ -456,6 +482,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 		Condition: condition,
 		Body:      body,
 		Offset:    offset,
+		NodeId:    p.getNodeId(),
 	}
 
 	if initializer != nil {
@@ -465,6 +492,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 				body,
 			},
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}
 	}
 
@@ -485,6 +513,7 @@ func (p *Parser) breakStatement() (*ast.Break, error) {
 
 	return &ast.Break{
 		Offset: offset,
+		NodeId: p.getNodeId(),
 	}, nil
 }
 
@@ -502,6 +531,7 @@ func (p *Parser) continueStatement() (*ast.Continue, error) {
 
 	return &ast.Continue{
 		Offset: offset,
+		NodeId: p.getNodeId(),
 	}, nil
 }
 
@@ -527,6 +557,7 @@ func (p *Parser) returnStatement() (*ast.Return, error) {
 		Keyword: keyword,
 		Value:   value,
 		Offset:  keyword.Offset,
+		NodeId:  p.getNodeId(),
 	}, nil
 }
 
@@ -564,6 +595,7 @@ func (p *Parser) assignment() (ast.Expr, error) {
 				Name:   get.Name,
 				Value:  value,
 				Offset: get.Name.Offset,
+				NodeId: p.getNodeId(),
 			}, nil
 		}
 
@@ -607,6 +639,7 @@ func (p *Parser) ternary() (ast.Expr, error) {
 			SecondOperator: secondOp,
 			Right:          right,
 			Offset:         firstOp.Offset,
+			NodeId:         p.getNodeId(),
 		}, nil
 	}
 
@@ -633,6 +666,7 @@ func (p *Parser) logicOr() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -659,6 +693,7 @@ func (p *Parser) logicAnd() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -685,6 +720,7 @@ func (p *Parser) equality() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -711,6 +747,7 @@ func (p *Parser) comparison() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -737,6 +774,7 @@ func (p *Parser) term() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -763,6 +801,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}
 	}
 
@@ -782,6 +821,7 @@ func (p *Parser) unary() (ast.Expr, error) {
 			Operator: operator,
 			Right:    right,
 			Offset:   operator.Offset,
+			NodeId:   p.getNodeId(),
 		}, nil
 	}
 
@@ -810,6 +850,7 @@ func (p *Parser) call() (ast.Expr, error) {
 				Object: expr,
 				Name:   name,
 				Offset: name.Offset,
+				NodeId: p.getNodeId(),
 			}
 		} else {
 			break
@@ -851,6 +892,7 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 		Paren:     paren,
 		Arguments: arguments,
 		Offset:    paren.Offset,
+		NodeId:    p.getNodeId(),
 	}, nil
 }
 
@@ -861,6 +903,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Literal{
 			Value:  false,
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, nil
 	}
 
@@ -868,6 +911,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Literal{
 			Value:  true,
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, nil
 	}
 
@@ -875,6 +919,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Literal{
 			Value:  nil,
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, nil
 	}
 
@@ -882,6 +927,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.This{
 			Keyword: p.previous(),
 			Offset:  offset,
+			NodeId:  p.getNodeId(),
 		}, nil
 	}
 
@@ -889,6 +935,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Literal{
 			Value:  p.previous().Literal,
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, nil
 	}
 
@@ -896,6 +943,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Variable{
 			Name:   p.previous(),
 			Offset: offset,
+			NodeId: p.getNodeId(),
 		}, nil
 	}
 
@@ -915,6 +963,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 		return &ast.Grouping{
 			Expression: expr,
 			Offset:     offset,
+			NodeId:     p.getNodeId(),
 		}, nil
 	}
 
@@ -935,6 +984,7 @@ func (p *Parser) primary() (ast.Expr, error) {
 			Keyword: keyword,
 			Method:  method,
 			Offset:  offset,
+			NodeId:  p.getNodeId(),
 		}, nil
 	}
 

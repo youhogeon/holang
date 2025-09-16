@@ -27,6 +27,7 @@ type Assign struct {
 	Name   *token.Token
 	Value  Expr
 	Offset token.Offset
+	NodeId int
 }
 
 func (a *Assign) Accept(visitor ExprVisitor) any {
@@ -42,6 +43,7 @@ type Binary struct {
 	Operator *token.Token
 	Right    Expr
 	Offset   token.Offset
+	NodeId   int
 }
 
 func (b *Binary) Accept(visitor ExprVisitor) any {
@@ -57,6 +59,7 @@ type Call struct {
 	Paren     *token.Token
 	Arguments []Expr
 	Offset    token.Offset
+	NodeId    int
 }
 
 func (c *Call) Accept(visitor ExprVisitor) any {
@@ -71,6 +74,7 @@ type Get struct {
 	Object Expr
 	Name   *token.Token
 	Offset token.Offset
+	NodeId int
 }
 
 func (g *Get) Accept(visitor ExprVisitor) any {
@@ -84,6 +88,7 @@ func (g *Get) AcceptString(visitor ExprVisitor) string {
 type Grouping struct {
 	Expression Expr
 	Offset     token.Offset
+	NodeId     int
 }
 
 func (g *Grouping) Accept(visitor ExprVisitor) any {
@@ -97,6 +102,7 @@ func (g *Grouping) AcceptString(visitor ExprVisitor) string {
 type Literal struct {
 	Value  any
 	Offset token.Offset
+	NodeId int
 }
 
 func (l *Literal) Accept(visitor ExprVisitor) any {
@@ -112,6 +118,7 @@ type Logical struct {
 	Operator *token.Token
 	Right    Expr
 	Offset   token.Offset
+	NodeId   int
 }
 
 func (l *Logical) Accept(visitor ExprVisitor) any {
@@ -127,6 +134,7 @@ type Set struct {
 	Name   *token.Token
 	Value  Expr
 	Offset token.Offset
+	NodeId int
 }
 
 func (s *Set) Accept(visitor ExprVisitor) any {
@@ -141,6 +149,7 @@ type Super struct {
 	Keyword *token.Token
 	Method  *token.Token
 	Offset  token.Offset
+	NodeId  int
 }
 
 func (s *Super) Accept(visitor ExprVisitor) any {
@@ -154,6 +163,7 @@ func (s *Super) AcceptString(visitor ExprVisitor) string {
 type This struct {
 	Keyword *token.Token
 	Offset  token.Offset
+	NodeId  int
 }
 
 func (t *This) Accept(visitor ExprVisitor) any {
@@ -171,6 +181,7 @@ type Ternary struct {
 	SecondOperator *token.Token
 	Right          Expr
 	Offset         token.Offset
+	NodeId         int
 }
 
 func (u *Ternary) Accept(visitor ExprVisitor) any {
@@ -185,6 +196,7 @@ type Unary struct {
 	Operator *token.Token
 	Right    Expr
 	Offset   token.Offset
+	NodeId   int
 }
 
 func (u *Unary) Accept(visitor ExprVisitor) any {
@@ -198,6 +210,7 @@ func (u *Unary) AcceptString(visitor ExprVisitor) string {
 type Variable struct {
 	Name   *token.Token
 	Offset token.Offset
+	NodeId int
 }
 
 func (v *Variable) Accept(visitor ExprVisitor) any {
