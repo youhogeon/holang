@@ -584,8 +584,10 @@ func (p *Parser) assignment() (ast.Expr, error) {
 			name := variable.Name
 
 			return &ast.Assign{
-				Name:  name,
-				Value: value,
+				Name:   name,
+				Value:  value,
+				Offset: name.Offset,
+				NodeId: p.getNodeId(),
 			}, nil
 		}
 

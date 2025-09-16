@@ -14,6 +14,7 @@ type Scanner struct {
 	start   int
 	current int
 	line    int
+	col     int
 
 	tokens []token.Token
 }
@@ -28,6 +29,7 @@ func (s *Scanner) ScanTokens() ([]token.Token, []error) {
 	errors := make([]error, 0)
 
 	for !s.isAtEnd() {
+		s.col += s.current - s.start
 		s.start = s.current
 
 		if err := s.scanToken(); err != nil {
@@ -49,6 +51,7 @@ func (s *Scanner) scanToken() error {
 		// Ignore whitespace.
 	case '\n':
 		s.line++
+		s.col = 0
 	case '(':
 		s.addToken(token.LEFT_PAREN, nil)
 	case ')':
@@ -259,7 +262,7 @@ func (s *Scanner) addToken(t token.TokenType, literal any) {
 		Literal:   literal,
 		Offset: token.Offset{
 			Line:  s.line,
-			Index: s.start,
+			Index: s.col - 1,
 		},
 	}
 
