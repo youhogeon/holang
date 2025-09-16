@@ -56,7 +56,6 @@ const (
 	// JUMP
 	OP_JUMP
 	OP_JUMP_IF_FALSE
-	OP_LOOP
 
 	// SPECIAL
 	OP_RETURN

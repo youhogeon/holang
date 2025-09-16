@@ -12,7 +12,7 @@ type Emitter interface {
 	MakeConstant(value bytecode.Value) int64
 	EmitJump(offset token.Offset, op bytecode.OpCode) int
 	PatchJump(at int)
-	EmitLoop(offset token.Offset, loopStart int)
+	Size() int
 }
 
 type ChunkEmitter struct {
@@ -63,6 +63,6 @@ func (e *ChunkEmitter) PatchJump(at int) {
 	e.chunk.OverWrite(at+3, tmp[2])
 }
 
-func (e *ChunkEmitter) EmitLoop(offset token.Offset, loopStart int) {
-
+func (e *ChunkEmitter) Size() int {
+	return e.chunk.Size()
 }

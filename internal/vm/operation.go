@@ -51,7 +51,6 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	// JUMP
 	(*VM).OP_JUMP,
 	(*VM).OP_JUMP_IF_FALSE,
-	(*VM).OP_LOOP,
 
 	// SPECIAL
 	(*VM).OP_RETURN,
@@ -433,11 +432,6 @@ func (vm *VM) OP_JUMP_IF_FALSE() InterpretResult {
 	if !util.IsTruthy(condition) {
 		vm.ip += int(n)
 	}
-
-	return InterpretResultOK
-}
-
-func (vm *VM) OP_LOOP() InterpretResult {
 
 	return InterpretResultOK
 }

@@ -379,6 +379,24 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 }
 
 func (g *CodeGenerator) VisitWhileStmt(stmt *ast.While) any {
+	loopStart := g.em.Size()
+
+	if err := stmt.Condition.Accept(g); err != nil {
+		return err
+	}
+
+	endJump := g.emitJump(stmt.Offset, bytecode.OP_JUMP_IF_FALSE)
+	g.emit(stmt.Offset, bytecode.OP_POP)
+
+	if err := stmt.Body.Accept(g); err != nil {
+		return err
+	}
+
+	jumpSize := int64(loopStart - g.em.Size() - 2)
+	g.emit(stmt.Offset, bytecode.OP_JUMP, jumpSize)
+	g.patchJump(endJump)
+	g.emit(stmt.Offset, bytecode.OP_POP)
+
 	return nil
 }
 
