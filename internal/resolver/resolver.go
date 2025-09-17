@@ -17,6 +17,8 @@ const (
 	BindGlobal BindingKind = iota
 	BindLocal
 	Block
+	Break
+	Continue
 )
 
 type Binding struct {
@@ -41,6 +43,8 @@ type Resolver struct {
 	nextSlot   int
 	scopeDepth int
 
+	loopDepthStack []int
+
 	bindings BindingResult
 	errors   []error
 }
@@ -53,6 +57,7 @@ func (r *Resolver) clear() {
 	r.locals = r.locals[:0]
 	r.nextSlot = 0
 	r.scopeDepth = 0
+	r.loopDepthStack = r.loopDepthStack[:0]
 
 	r.bindings = make(BindingResult)
 	r.errors = r.errors[:0]
@@ -371,15 +376,46 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 
 func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
 	stmt.Condition.Accept(r)
+
+	r.loopDepthStack = append(r.loopDepthStack, r.nextSlot)
 	stmt.Body.Accept(r)
+	r.loopDepthStack = r.loopDepthStack[:len(r.loopDepthStack)-1]
 
 	return nil
 }
 
 func (r *Resolver) VisitBreakStmt(stmt *ast.Break) any {
+	if len(r.loopDepthStack) == 0 {
+		r.addError("break statement not within a loop")
+
+		return nil
+	}
+
+	topBaseSlot := r.loopDepthStack[len(r.loopDepthStack)-1]
+	popCount := r.nextSlot - topBaseSlot
+
+	r.bindings[stmt.NodeId] = Binding{
+		Kind: Break,
+		Slot: popCount,
+	}
+
 	return nil
 }
 
 func (r *Resolver) VisitContinueStmt(stmt *ast.Continue) any {
+	if len(r.loopDepthStack) == 0 {
+		r.addError("continue statement not within a loop")
+
+		return nil
+	}
+
+	topBaseSlot := r.loopDepthStack[len(r.loopDepthStack)-1]
+	popCount := r.nextSlot - topBaseSlot
+
+	r.bindings[stmt.NodeId] = Binding{
+		Kind: Continue,
+		Slot: popCount,
+	}
+
 	return nil
 }

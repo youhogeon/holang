@@ -7,9 +7,9 @@ import (
 )
 
 type Parser struct {
-	tokens    []token.Token
-	current   int
-	loopDepth int
+	tokens  []token.Token
+	current int
+	// loopDepth int
 
 	nextId int
 }
@@ -369,8 +369,8 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 
 func (p *Parser) whileStatement() (*ast.While, error) {
 	offset := p.previous().Offset
-	p.loopDepth++
-	defer func() { p.loopDepth-- }()
+	// p.loopDepth++
+	// defer func() { p.loopDepth-- }()
 
 	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after while.")
 	if err != nil {
@@ -403,8 +403,8 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 func (p *Parser) forStatement() (ast.Stmt, error) {
 	offset := p.previous().Offset
 
-	p.loopDepth++
-	defer func() { p.loopDepth-- }()
+	// p.loopDepth++
+	// defer func() { p.loopDepth-- }()
 
 	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after for.")
 	if err != nil {
@@ -502,9 +502,9 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 func (p *Parser) breakStatement() (*ast.Break, error) {
 	offset := p.previous().Offset
 
-	if p.loopDepth == 0 {
-		return nil, NewParseErrorWithLog("break statement not within a loop", p.previous())
-	}
+	// if p.loopDepth == 0 {
+	// 	return nil, NewParseErrorWithLog("break statement not within a loop", p.previous())
+	// }
 
 	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after break.")
 	if err != nil {
@@ -520,9 +520,9 @@ func (p *Parser) breakStatement() (*ast.Break, error) {
 func (p *Parser) continueStatement() (*ast.Continue, error) {
 	offset := p.previous().Offset
 
-	if p.loopDepth == 0 {
-		return nil, NewParseErrorWithLog("continue statement not within a loop", p.previous())
-	}
+	// if p.loopDepth == 0 {
+	// 	return nil, NewParseErrorWithLog("continue statement not within a loop", p.previous())
+	// }
 
 	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after continue.")
 	if err != nil {
