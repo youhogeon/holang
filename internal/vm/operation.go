@@ -384,14 +384,14 @@ func (vm *VM) OP_SET_GLOBAL() InterpretResult {
 
 func (vm *VM) OP_GET_LOCAL() InterpretResult {
 	slot := vm.getOperand()
-	vm.push(vm.stack[slot])
+	vm.push(vm.getStack(int(slot)))
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_SET_LOCAL() InterpretResult {
 	slot := vm.getOperand()
-	vm.stack[slot] = vm.peek(0)
+	vm.setStack(int(slot), vm.peek(0))
 
 	return InterpretResultOK
 }
@@ -419,8 +419,9 @@ func (vm *VM) OP_POPN() InterpretResult {
 
 func (vm *VM) OP_JUMP() InterpretResult {
 	n := vm.getOperand()
+	frame := vm.currentFrame()
 
-	vm.ip += int(n)
+	frame.ip += int(n)
 
 	return InterpretResultOK
 }
@@ -428,9 +429,10 @@ func (vm *VM) OP_JUMP() InterpretResult {
 func (vm *VM) OP_JUMP_IF_FALSE() InterpretResult {
 	condition := vm.peek(0)
 	n := vm.getOperand()
+	frame := vm.currentFrame()
 
 	if !util.IsTruthy(condition) {
-		vm.ip += int(n)
+		frame.ip += int(n)
 	}
 
 	return InterpretResultOK

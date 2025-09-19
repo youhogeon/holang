@@ -141,7 +141,7 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	if vm == nil {
 		vm = vm_.NewVM()
 	}
-	result := vm.Interpret(ch)
+	result := vm.Run(rootFn)
 
 	log.Info("VM interpret finished", log.A("result", result))
 

@@ -6,79 +6,122 @@ import (
 	"internal/util/log"
 )
 
+type callFrame struct {
+	fn       *runtime.ObjFunction
+	ip       int
+	slotBase int
+}
+
+func (cf *callFrame) getChunk() *bytecode.Chunk {
+	return cf.fn.Chunk
+}
+
 type VM struct {
-	chunk   *bytecode.Chunk
-	ip      int
-	stack   []bytecode.Value
+	callFrames []callFrame
+	stack      []bytecode.Value
+
 	globals map[string]bytecode.Value
 	objects *runtime.ObjectList
 }
 
 func NewVM() *VM {
-	return &VM{
-		globals: make(map[string]bytecode.Value),
-		objects: runtime.NewObjectList(),
-	}
+	return &VM{}
 }
 
 func (vm *VM) Free() {
-	if vm.chunk != nil {
-		vm.chunk.Clear()
-		vm.chunk = nil
-	}
-
-	vm.ip = 0
-	vm.stack = vm.stack[:0]
+	vm.callFrames = vm.callFrames[:0]
 	vm.globals = make(map[string]bytecode.Value)
 	vm.objects = runtime.NewObjectList()
 }
 
-func (vm *VM) Interpret(chunk *bytecode.Chunk) InterpretResult {
-	vm.chunk = chunk
-	vm.ip = 0
+func (vm *VM) Run(fn *runtime.ObjFunction) InterpretResult {
+	vm.Free()
+
+	frame := callFrame{
+		fn:       fn,
+		ip:       0,
+		slotBase: 0,
+	}
+	vm.callFrames = append(vm.callFrames, frame)
 
 	return vm.run()
 }
 
+// ================================================================
+// callFrame
+// ================================================================
+
+func (vm *VM) currentFrame() *callFrame {
+	return &vm.callFrames[len(vm.callFrames)-1]
+}
+
+// ================================================================
+// CODE
+// ================================================================
+
 func (vm *VM) peekOp() bytecode.OpCode {
-	return vm.chunk.GetOperator(vm.ip)
+	frame := vm.currentFrame()
+	chunk := frame.getChunk()
+
+	return chunk.GetOperator(frame.ip)
 }
 
 func (vm *VM) getOp() bytecode.OpCode {
+	frame := vm.currentFrame()
+
 	op := vm.peekOp()
-	vm.ip++
+	frame.ip++
 
 	return op
 }
 
 func (vm *VM) peekOperand() int64 {
-	v, _ := vm.chunk.GetOperand(vm.ip)
+	frame := vm.currentFrame()
+	chunk := frame.getChunk()
+
+	v, _ := chunk.GetOperand(frame.ip)
 
 	return v
 }
 
 func (vm *VM) getOperand() int64 {
-	v, n := vm.chunk.GetOperand(vm.ip)
+	frame := vm.currentFrame()
+	chunk := frame.getChunk()
 
-	vm.ip += n
+	v, n := chunk.GetOperand(frame.ip)
+
+	frame.ip += n
 
 	return v
 }
 
-func (vm *VM) peekConstant() bytecode.Value {
-	constIndex := vm.peekOperand()
-
-	return vm.chunk.GetConstant(constIndex)
-}
-
 func (vm *VM) getConstant() bytecode.Value {
+	frame := vm.currentFrame()
+	chunk := frame.getChunk()
+
 	constIndex := vm.getOperand()
 
-	return vm.chunk.GetConstant(constIndex)
+	return chunk.GetConstant(constIndex)
 }
+
+// ================================================================
+// STACK
+// ================================================================
 
 func (vm *VM) push(value bytecode.Value) {
 	vm.stack = append(vm.stack, value)
+}
+
+func (vm *VM) getStack(idx int) bytecode.Value {
+	frame := vm.currentFrame()
+
+	return vm.stack[frame.slotBase+idx]
+}
+
+func (vm *VM) setStack(idx int, value bytecode.Value) {
+	frame := vm.currentFrame()
+
+	vm.stack[frame.slotBase+idx] = value
 }
 
 func (vm *VM) peek(idx int) bytecode.Value {
@@ -113,9 +156,16 @@ func (vm *VM) run() InterpretResult {
 		}
 	}()
 
-	for vm.ip < vm.chunk.Size() {
+	for {
+		frame := vm.currentFrame()
+		chunk := frame.getChunk()
+
+		if frame.ip >= chunk.Size() {
+			break
+		}
+
 		instruction := vm.getOp()
-		ip := vm.ip - 1
+		ip := frame.ip - 1
 
 		fn := OP_FUNCS[instruction]
 		if fn == nil {
