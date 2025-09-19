@@ -1,15 +1,16 @@
 package vm
 
 import (
+	"fmt"
 	"internal/bytecode"
 	"internal/runtime"
 	"internal/util/log"
 )
 
 type callFrame struct {
-	fn       *runtime.ObjFunction
-	ip       int
-	slotBase int
+	fn *runtime.ObjFunction
+	ip int
+	sp int
 }
 
 func (cf *callFrame) getChunk() *bytecode.Chunk {
@@ -17,7 +18,7 @@ func (cf *callFrame) getChunk() *bytecode.Chunk {
 }
 
 type VM struct {
-	callFrames []callFrame
+	callFrames []*callFrame
 	stack      []bytecode.Value
 
 	globals map[string]bytecode.Value
@@ -37,10 +38,10 @@ func (vm *VM) Free() {
 func (vm *VM) Run(fn *runtime.ObjFunction) InterpretResult {
 	vm.Free()
 
-	frame := callFrame{
-		fn:       fn,
-		ip:       0,
-		slotBase: 0,
+	frame := &callFrame{
+		fn: fn,
+		ip: 0,
+		sp: 0,
 	}
 	vm.callFrames = append(vm.callFrames, frame)
 
@@ -52,7 +53,7 @@ func (vm *VM) Run(fn *runtime.ObjFunction) InterpretResult {
 // ================================================================
 
 func (vm *VM) currentFrame() *callFrame {
-	return &vm.callFrames[len(vm.callFrames)-1]
+	return vm.callFrames[len(vm.callFrames)-1]
 }
 
 // ================================================================
@@ -115,13 +116,13 @@ func (vm *VM) push(value bytecode.Value) {
 func (vm *VM) getStack(idx int) bytecode.Value {
 	frame := vm.currentFrame()
 
-	return vm.stack[frame.slotBase+idx]
+	return vm.stack[frame.sp+idx]
 }
 
 func (vm *VM) setStack(idx int, value bytecode.Value) {
 	frame := vm.currentFrame()
 
-	vm.stack[frame.slotBase+idx] = value
+	vm.stack[frame.sp+idx] = value
 }
 
 func (vm *VM) peek(idx int) bytecode.Value {
@@ -176,8 +177,10 @@ func (vm *VM) run() InterpretResult {
 
 		result := fn(vm)
 
+		fmt.Println(vm.stack)
 		log.DebugIfEnabled("VM run completed", func() []log.Field {
 			return []log.Field{
+				log.S("function", frame.fn.Name),
 				log.I("ip", ip),
 				log.A("instruction", instruction),
 				log.A("stack", vm.stack),

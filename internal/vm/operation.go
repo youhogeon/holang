@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"internal/runtime"
 	"internal/util"
 	"internal/util/log"
 )
@@ -52,8 +53,11 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_JUMP,
 	(*VM).OP_JUMP_IF_FALSE,
 
-	// SPECIAL
+	// FUN
+	(*VM).OP_CALL,
 	(*VM).OP_RETURN,
+
+	// SPECIAL
 	(*VM).OP_PRINT,
 }
 
@@ -439,12 +443,57 @@ func (vm *VM) OP_JUMP_IF_FALSE() InterpretResult {
 }
 
 // ================================================================
-// SPECIAL
+// FUN
 // ================================================================
 
-func (vm *VM) OP_RETURN() InterpretResult {
+func (vm *VM) OP_CALL() InterpretResult {
+	argCount := int(vm.getOperand())
+	callee := vm.peek(int(argCount))
+
+	fn, ok := callee.(*runtime.ObjFunction)
+	if !ok {
+		log.Error("Can only call functions", log.A("value", callee))
+
+		return InterpretResultRuntimeError
+	}
+
+	if argCount != fn.Arity {
+		log.Error("Wrong arguments count", log.I("expected", fn.Arity), log.I("got", argCount), log.A("function", fn.String()))
+
+		return InterpretResultRuntimeError
+	}
+
+	if len(vm.callFrames) == FRAMES_MAX {
+		log.Error("Stack overflow")
+
+		return InterpretResultRuntimeError
+	}
+
+	frame := &callFrame{
+		fn: fn,
+		ip: 0,
+		sp: len(vm.stack) - argCount - 1,
+	}
+
+	vm.callFrames = append(vm.callFrames, frame)
+
 	return InterpretResultOK
 }
+
+func (vm *VM) OP_RETURN() InterpretResult {
+	result := vm.pop()
+	frame := vm.currentFrame()
+
+	vm.callFrames = vm.callFrames[:len(vm.callFrames)-1]
+	vm.stack = vm.stack[:frame.sp]
+	vm.push(result)
+
+	return InterpretResultOK
+}
+
+// ================================================================
+// SPECIAL
+// ================================================================
 
 func (vm *VM) OP_PRINT() InterpretResult {
 	value := vm.pop()

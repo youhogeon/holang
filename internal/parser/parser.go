@@ -883,7 +883,6 @@ func (p *Parser) finishCall(callee ast.Expr) (ast.Expr, error) {
 
 	return &ast.Call{
 		Callee:    callee,
-		Paren:     paren,
 		Arguments: arguments,
 		Offset:    paren.Offset,
 		NodeId:    p.getNodeId(),

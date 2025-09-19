@@ -7,3 +7,5 @@ const (
 	InterpretResultCompileError
 	InterpretResultRuntimeError
 )
+
+const FRAMES_MAX = 1024

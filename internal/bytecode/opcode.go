@@ -57,8 +57,11 @@ const (
 	OP_JUMP
 	OP_JUMP_IF_FALSE
 
-	// SPECIAL
+	// FUN
+	OP_CALL
 	OP_RETURN
+
+	// SPECIAL
 	OP_PRINT
 )
 
@@ -72,6 +75,7 @@ var operandsCount = map[OpCode]int{
 	OP_POPN:          1,
 	OP_JUMP:          1,
 	OP_JUMP_IF_FALSE: 1,
+	OP_CALL:          1,
 }
 
 func (op OpCode) OperandsCount() int {

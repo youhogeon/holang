@@ -351,10 +351,22 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	r.scopeDepth = 0
 	r.loopDepthStack = r.loopDepthStack[:0]
 
+	// 새로운 scope
 	r.beginScope()
+
+	r.declare(&token.Token{
+		Lexeme: "",
+	}) // this
+
+	for _, p := range stmt.Params {
+		r.declare(p)
+		r.define(p)
+	}
+
 	for _, bodyStmt := range stmt.Body {
 		bodyStmt.Accept(r)
 	}
+
 	r.endScope()
 
 	r.locals = savedLocals

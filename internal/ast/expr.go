@@ -58,7 +58,6 @@ func (b *Binary) AcceptString(visitor ExprVisitor) string {
 
 type Call struct {
 	Callee    Expr
-	Paren     *token.Token
 	Arguments []Expr
 	Offset    token.Offset
 	NodeId    NodeIdType

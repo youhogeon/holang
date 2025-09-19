@@ -71,8 +71,6 @@ func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
 }
 
 func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
-	g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_RETURN)
-
 	fc := g.funcCtx[len(g.funcCtx)-1]
 	g.funcCtx = g.funcCtx[:len(g.funcCtx)-1]
 
@@ -231,6 +229,18 @@ func (g *CodeGenerator) VisitBinaryExpr(expr *ast.Binary) any {
 }
 
 func (g *CodeGenerator) VisitCallExpr(expr *ast.Call) any {
+	if err := expr.Callee.Accept(g); err != nil {
+		return err
+	}
+
+	for _, arg := range expr.Arguments {
+		if err := arg.Accept(g); err != nil {
+			return err
+		}
+	}
+
+	g.emit(expr.Offset, bytecode.OP_CALL, int64(len(expr.Arguments)))
+
 	return nil
 }
 
@@ -453,6 +463,10 @@ func (g *CodeGenerator) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (g *CodeGenerator) VisitReturnStmt(stmt *ast.Return) any {
+	if err := stmt.Value.Accept(g); err != nil {
+		return err
+	}
+
 	g.emit(stmt.Offset, bytecode.OP_RETURN)
 
 	return nil
