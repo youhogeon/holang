@@ -13,7 +13,18 @@ type ObjFunction struct {
 	Name  string
 	Arity int
 	Type  FunctionType
-	Chunk bytecode.Chunk
+	Chunk *bytecode.Chunk
+}
+
+func NewObjFunction(name string, arity int, ftype FunctionType) *ObjFunction {
+	chunk := bytecode.NewChunk()
+
+	return &ObjFunction{
+		Name:  name,
+		Arity: arity,
+		Type:  ftype,
+		Chunk: chunk,
+	}
 }
 
 func (of *ObjFunction) ObjectType() ObjectType {

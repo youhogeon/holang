@@ -5,6 +5,7 @@ import (
 	"internal/ast"
 	"internal/bytecode"
 	"internal/resolver"
+	"internal/runtime"
 	"internal/token"
 )
 
@@ -16,32 +17,66 @@ type loopCtx struct {
 	continues []int
 }
 
+type functionCtx struct {
+	fn *runtime.ObjFunction
+	em Emitter
+}
+
 type CodeGenerator struct {
-	em       Emitter
 	bindings resolver.BindingResult
 
 	loopCtx []*loopCtx
+	funcCtx []*functionCtx
 }
 
-func NewCodeGenerator(em Emitter, bindings resolver.BindingResult) *CodeGenerator {
+func NewCodeGenerator(bindings resolver.BindingResult) *CodeGenerator {
 	return &CodeGenerator{
-		em:       em,
 		bindings: bindings,
 	}
 }
 
-func (g *CodeGenerator) Generate(statements []ast.Stmt) error {
+func (g *CodeGenerator) Generate(statements []ast.Stmt) (*runtime.ObjFunction, error) {
+	rootFn := runtime.NewObjFunction("<script>", 0, runtime.FUNCTION_TYPE_SCRIPT)
+	g.beginFunction(rootFn)
+
 	for _, stmt := range statements {
 		err := g.genStmt(stmt)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	g._emit(bytecode.OP_RETURN)
+	g.endFunction()
 
-	return nil
+	return rootFn, nil
+}
+
+func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
+	ch := fn.Chunk
+	em := NewChunkEmitter(ch)
+
+	g.funcCtx = append(g.funcCtx, &functionCtx{
+		fn: fn,
+		em: em,
+	})
+}
+
+func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
+	g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_RETURN)
+
+	fc := g.funcCtx[len(g.funcCtx)-1]
+	g.funcCtx = g.funcCtx[:len(g.funcCtx)-1]
+
+	return fc.fn
+}
+
+func (g *CodeGenerator) getEmitter() Emitter {
+	if len(g.funcCtx) == 0 {
+		return nil
+	}
+
+	return g.funcCtx[len(g.funcCtx)-1].em
 }
 
 func (g *CodeGenerator) genStmt(s ast.Stmt) error {
@@ -52,24 +87,32 @@ func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 	return nil
 }
 
-func (g *CodeGenerator) _emit(op bytecode.OpCode, operands ...int64) int {
-	return g.em.Emit(token.Offset{Line: -1, Index: -1}, op, operands...)
+func (g *CodeGenerator) getChunkSize() int {
+	em := g.getEmitter()
+
+	return em.Size()
 }
 
 func (g *CodeGenerator) emit(offset token.Offset, op bytecode.OpCode, operands ...int64) int {
-	return g.em.Emit(offset, op, operands...)
+	em := g.getEmitter()
+
+	return em.Emit(offset, op, operands...)
 }
 
 func (g *CodeGenerator) emitJump(offset token.Offset, op bytecode.OpCode) int {
-	return g.em.EmitJump(offset, op)
+	em := g.getEmitter()
+
+	return em.EmitJump(offset, op)
 }
 
 func (g *CodeGenerator) patchJump(jumpOpLoc int) {
-	g.em.PatchJump(jumpOpLoc, g.em.Size())
+	g.patchJumpTo(jumpOpLoc, g.getChunkSize())
 }
 
 func (g *CodeGenerator) patchJumpTo(jumpOpLoc int, jumpTo int) {
-	g.em.PatchJump(jumpOpLoc, jumpTo)
+	em := g.getEmitter()
+
+	em.PatchJump(jumpOpLoc, jumpTo)
 }
 
 func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
@@ -85,42 +128,44 @@ func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
 func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
 	switch v := value.(type) {
 	case nil:
-		g.em.Emit(offset, bytecode.OP_NIL)
+		g.emit(offset, bytecode.OP_NIL)
 
 	case bool:
 		if v {
-			g.em.Emit(offset, bytecode.OP_TRUE)
+			g.emit(offset, bytecode.OP_TRUE)
 		} else {
-			g.em.Emit(offset, bytecode.OP_FALSE)
+			g.emit(offset, bytecode.OP_FALSE)
 		}
 
 	case int64:
 		switch v {
 		case -1:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_M1)
+			g.emit(offset, bytecode.OP_CONSTANT_M1)
 		case 0:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_0)
+			g.emit(offset, bytecode.OP_CONSTANT_0)
 		case 1:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_1)
+			g.emit(offset, bytecode.OP_CONSTANT_1)
 		case 2:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_2)
+			g.emit(offset, bytecode.OP_CONSTANT_2)
 		case 3:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_3)
+			g.emit(offset, bytecode.OP_CONSTANT_3)
 		case 4:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_4)
+			g.emit(offset, bytecode.OP_CONSTANT_4)
 		case 5:
-			g.em.Emit(offset, bytecode.OP_CONSTANT_5)
+			g.emit(offset, bytecode.OP_CONSTANT_5)
 		default:
-			g.em.Emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
+			g.emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
 		}
 
 	default:
-		g.em.Emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
+		g.emit(offset, bytecode.OP_CONSTANT, g.makeConstant(value))
 	}
 }
 
 func (g *CodeGenerator) makeConstant(value bytecode.Value) int64 {
-	return g.em.MakeConstant(value)
+	em := g.getEmitter()
+
+	return em.MakeConstant(value)
 }
 
 // ================================================================
@@ -385,7 +430,7 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 }
 
 func (g *CodeGenerator) VisitWhileStmt(stmt *ast.While) any {
-	loopStart := g.em.Size()
+	loopStart := g.getChunkSize()
 
 	currentLoopCtx := &loopCtx{
 		loopStart: loopStart,

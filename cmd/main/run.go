@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"internal/ast"
-	"internal/bytecode"
 	"internal/codegen"
 	interpreter_ "internal/interpreter"
 	"internal/parser"
@@ -122,15 +121,16 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	// Codegen
 	// ================================================================
 
-	ch := bytecode.NewChunk()
-	em := codegen.NewChunkEmitter(ch)
-	gen := codegen.NewCodeGenerator(em, bindings)
+	gen := codegen.NewCodeGenerator(bindings)
 
-	if err := gen.Generate(statements); err != nil {
+	rootFn, err := gen.Generate(statements)
+	if err != nil {
 		log.Error("Codegen error", log.E(err))
 
 		return
 	}
+
+	ch := rootFn.Chunk
 
 	disassemble := ch.Disassemble()
 	log.Debug("Codegen complete", log.A("bytecode", disassemble))
