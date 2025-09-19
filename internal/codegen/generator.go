@@ -10,9 +10,16 @@ import (
 
 const _POPN_THRESHOLD = 3
 
+type loopCtx struct {
+	loopStart int
+	breaks    []int
+}
+
 type CodeGenerator struct {
 	em       Emitter
 	bindings resolver.BindingResult
+
+	loopCtx []*loopCtx
 }
 
 func NewCodeGenerator(em Emitter, bindings resolver.BindingResult) *CodeGenerator {
@@ -64,8 +71,22 @@ func (g *CodeGenerator) emitJump(offset token.Offset, op bytecode.OpCode) int {
 	return g.em.EmitJump(offset, op)
 }
 
-func (g *CodeGenerator) patchJump(at int) {
-	g.em.PatchJump(at)
+func (g *CodeGenerator) patchJump(jumpOpLoc int) {
+	g.em.PatchJump(jumpOpLoc, g.em.Size())
+}
+
+func (g *CodeGenerator) patchJumpTo(jumpOpLoc int, jumpTo int) {
+	g.em.PatchJump(jumpOpLoc, jumpTo)
+}
+
+func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
+	if popCnt >= _POPN_THRESHOLD {
+		g.emit(offset, bytecode.OP_POPN, int64(popCnt))
+	}
+
+	for range popCnt {
+		g.emit(offset, bytecode.OP_POP)
+	}
 }
 
 func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
@@ -281,15 +302,7 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 
 	popCnt := g.bindings[stmt.NodeId].Slot
 
-	if popCnt >= _POPN_THRESHOLD {
-		g.emit(stmt.Offset, bytecode.OP_POPN, int64(popCnt))
-
-		return nil
-	}
-
-	for range popCnt {
-		g.emit(stmt.Offset, bytecode.OP_POP)
-	}
+	g.emitPop(stmt.Offset, popCnt)
 
 	return nil
 }
@@ -381,6 +394,12 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 func (g *CodeGenerator) VisitWhileStmt(stmt *ast.While) any {
 	loopStart := g.em.Size()
 
+	currentLoopCtx := &loopCtx{
+		loopStart: loopStart,
+		breaks:    []int{},
+	}
+	g.loopCtx = append(g.loopCtx, currentLoopCtx)
+
 	if err := stmt.Condition.Accept(g); err != nil {
 		return err
 	}
@@ -392,18 +411,48 @@ func (g *CodeGenerator) VisitWhileStmt(stmt *ast.While) any {
 		return err
 	}
 
-	jumpSize := int64(loopStart - g.em.Size() - 2)
-	g.emit(stmt.Offset, bytecode.OP_JUMP, jumpSize)
+	j := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	g.patchJumpTo(j, loopStart)
+
 	g.patchJump(endJump)
 	g.emit(stmt.Offset, bytecode.OP_POP)
+
+	// break 처리
+	for _, breakPos := range currentLoopCtx.breaks {
+		g.patchJump(breakPos)
+	}
+
+	g.loopCtx = g.loopCtx[:len(g.loopCtx)-1]
 
 	return nil
 }
 
 func (g *CodeGenerator) VisitBreakStmt(stmt *ast.Break) any {
+	if len(g.loopCtx) == 0 {
+		return errors.New("break statement not within a loop")
+	}
+
+	loopCtx := g.loopCtx[len(g.loopCtx)-1]
+
+	popCount := g.bindings[stmt.NodeId].Slot
+	g.emitPop(stmt.Offset, popCount)
+
+	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	loopCtx.breaks = append(loopCtx.breaks, jump)
+
 	return nil
 }
 
 func (g *CodeGenerator) VisitContinueStmt(stmt *ast.Continue) any {
+	if len(g.loopCtx) == 0 {
+		return errors.New("continue statement not within a loop")
+	}
+
+	popCount := g.bindings[stmt.NodeId].Slot
+	g.emitPop(stmt.Offset, popCount)
+
+	j := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	g.patchJumpTo(j, g.loopCtx[len(g.loopCtx)-1].loopStart)
+
 	return nil
 }
