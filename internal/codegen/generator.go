@@ -290,6 +290,28 @@ func (g *CodeGenerator) VisitThisExpr(expr *ast.This) any {
 }
 
 func (g *CodeGenerator) VisitTernaryExpr(expr *ast.Ternary) any {
+	if err := expr.Left.Accept(g); err != nil {
+		return err
+	}
+
+	jump := g.emitJump(expr.Offset, bytecode.OP_JUMP_IF_FALSE)
+
+	g.emit(expr.Offset, bytecode.OP_POP)
+	if err := expr.Mid.Accept(g); err != nil {
+		return err
+	}
+
+	endJump := g.emitJump(expr.Offset, bytecode.OP_JUMP)
+
+	g.patchJump(jump)
+
+	g.emit(expr.Offset, bytecode.OP_POP)
+	if err := expr.Right.Accept(g); err != nil {
+		return err
+	}
+
+	g.patchJump(endJump)
+
 	return nil
 }
 
