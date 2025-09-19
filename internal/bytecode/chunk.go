@@ -97,7 +97,9 @@ func (c *Chunk) Disassemble() []string {
 			pos += n
 
 			if operator == OP_CONSTANT {
-				operands[j] = fmt.Sprintf("%d, value %v", x, c.GetConstant(x))
+				operands[j] = fmt.Sprintf("%d (value: %v)", x, c.GetConstant(x))
+			} else if operator == OP_JUMP || operator == OP_JUMP_IF_FALSE {
+				operands[j] = fmt.Sprintf("%d (target: %d)", x, int64(pos)+x+1)
 			} else {
 				operands[j] = x
 			}

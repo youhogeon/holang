@@ -365,13 +365,17 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 }
 
 func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
-	err := stmt.Condition.Accept(r)
-	if err != nil {
+	if err := stmt.Condition.Accept(r); err != nil {
 		return err
 	}
 
-	err = stmt.Body.Accept(r)
-	if err != nil {
+	if stmt.Post != nil {
+		if err := stmt.Post.Accept(r); err != nil {
+			return err
+		}
+	}
+
+	if err := stmt.Body.Accept(r); err != nil {
 		return err
 	}
 

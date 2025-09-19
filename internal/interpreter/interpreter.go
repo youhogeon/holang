@@ -114,19 +114,43 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.Binary) any {
 
 	switch expr.Operator.TokenType {
 	case token.PLUS:
-		if ls, ok := left.(string); ok {
-			if rs, ok := right.(string); ok {
-				return &valueAndError{ls + rs, nil}
+		switch aVal := left.(type) {
+		case int64:
+			switch bVal := right.(type) {
+			case int64:
+				return &valueAndError{aVal + bVal, nil}
+			case float64:
+				return &valueAndError{float64(aVal) + bVal, nil}
+			case string:
+				return &valueAndError{fmt.Sprintf("%d%s", aVal, bVal), nil}
+			default:
+				return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number")}
 			}
-
-			return &valueAndError{nil, NewRuntimeErrorWithLog("can only concatenate string to string")}
+		case float64:
+			switch bVal := right.(type) {
+			case int64:
+				return &valueAndError{aVal + float64(bVal), nil}
+			case float64:
+				return &valueAndError{aVal + bVal, nil}
+			case string:
+				return &valueAndError{fmt.Sprintf("%f%s", aVal, bVal), nil}
+			default:
+				return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number")}
+			}
+		case string:
+			switch bVal := right.(type) {
+			case int64:
+				return &valueAndError{fmt.Sprintf("%s%d", aVal, bVal), nil}
+			case float64:
+				return &valueAndError{fmt.Sprintf("%s%f", aVal, bVal), nil}
+			case string:
+				return &valueAndError{aVal + bVal, nil}
+			default:
+				return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number or string")}
+			}
+		default:
+			return &valueAndError{nil, NewRuntimeErrorWithLog("operand must be a number or string")}
 		}
-
-		return binaryNumericOp(
-			left, right,
-			func(a, b int64) any { return a + b },
-			func(a, b float64) any { return a + b },
-		)
 	case token.MINUS:
 		return binaryNumericOp(
 			left, right,
@@ -530,10 +554,22 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.While) any {
 			}
 
 			if _, ok := err.(*continueSignal); ok {
+				if stmt.Post != nil {
+					if _, err := i.evaluate(stmt.Post); err != nil {
+						return err
+					}
+				}
+
 				continue
 			}
 
 			return err
+		}
+
+		if stmt.Post != nil {
+			if _, err := i.evaluate(stmt.Post); err != nil {
+				return err
+			}
 		}
 	}
 

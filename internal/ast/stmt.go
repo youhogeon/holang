@@ -144,8 +144,10 @@ func (s *Var) AcceptString(visitor StmtVisitor) string {
 type While struct {
 	Condition Expr
 	Body      Stmt
-	Offset    token.Offset
-	NodeId    NodeIdType
+	Post      Expr
+
+	Offset token.Offset
+	NodeId NodeIdType
 }
 
 func (s *While) Accept(visitor StmtVisitor) any {

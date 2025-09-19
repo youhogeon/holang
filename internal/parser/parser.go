@@ -9,7 +9,6 @@ import (
 type Parser struct {
 	tokens  []token.Token
 	current int
-	// loopDepth int
 
 	nextId int
 }
@@ -369,8 +368,6 @@ func (p *Parser) ifStatement() (*ast.If, error) {
 
 func (p *Parser) whileStatement() (*ast.While, error) {
 	offset := p.previous().Offset
-	// p.loopDepth++
-	// defer func() { p.loopDepth-- }()
 
 	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after while.")
 	if err != nil {
@@ -403,9 +400,6 @@ func (p *Parser) whileStatement() (*ast.While, error) {
 func (p *Parser) forStatement() (ast.Stmt, error) {
 	offset := p.previous().Offset
 
-	// p.loopDepth++
-	// defer func() { p.loopDepth-- }()
-
 	_, err := p.consumeOrError(token.LEFT_PAREN, "Expect '(' after for.")
 	if err != nil {
 		return nil, err
@@ -420,6 +414,11 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 		}
 	} else if !p.check(token.SEMICOLON) { // for any expr stmt
 		initializer, err = p.exprStatement()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err = p.consumeOrError(token.SEMICOLON, "Expect ';' after for condition.")
 		if err != nil {
 			return nil, err
 		}
@@ -459,20 +458,20 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 	}
 
 	// desugar for loop into while loop
-	if increment != nil {
-		body = &ast.Block{
-			Statements: []ast.Stmt{
-				body,
-				&ast.Expression{
-					Expression: increment,
-					Offset:     offset,
-					NodeId:     p.getNodeId(),
-				},
-			},
-			Offset: offset,
-			NodeId: p.getNodeId(),
-		}
-	}
+	// if increment != nil {
+	// 	body = &ast.Block{
+	// 		Statements: []ast.Stmt{
+	// 			body,
+	// 			&ast.Expression{
+	// 				Expression: increment,
+	// 				Offset:     offset,
+	// 				NodeId:     p.getNodeId(),
+	// 			},
+	// 		},
+	// 		Offset: offset,
+	// 		NodeId: p.getNodeId(),
+	// 	}
+	// }
 
 	if condition == nil {
 		condition = &ast.Literal{Value: true}
@@ -481,6 +480,7 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 	body = &ast.While{
 		Condition: condition,
 		Body:      body,
+		Post:      increment,
 		Offset:    offset,
 		NodeId:    p.getNodeId(),
 	}
@@ -502,10 +502,6 @@ func (p *Parser) forStatement() (ast.Stmt, error) {
 func (p *Parser) breakStatement() (*ast.Break, error) {
 	offset := p.previous().Offset
 
-	// if p.loopDepth == 0 {
-	// 	return nil, NewParseErrorWithLog("break statement not within a loop", p.previous())
-	// }
-
 	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after break.")
 	if err != nil {
 		return nil, err
@@ -519,10 +515,6 @@ func (p *Parser) breakStatement() (*ast.Break, error) {
 
 func (p *Parser) continueStatement() (*ast.Continue, error) {
 	offset := p.previous().Offset
-
-	// if p.loopDepth == 0 {
-	// 	return nil, NewParseErrorWithLog("continue statement not within a loop", p.previous())
-	// }
 
 	_, err := p.consumeOrError(token.SEMICOLON, "Expect ';' after continue.")
 	if err != nil {

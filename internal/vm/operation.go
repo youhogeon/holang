@@ -166,41 +166,41 @@ func (vm *VM) OP_ADD() InterpretResult {
 	b := vm.pop()
 	a := vm.pop()
 
-	switch a.(type) {
+	switch aVal := a.(type) {
 	case int64:
-		switch v := b.(type) {
+		switch bVal := b.(type) {
 		case int64:
-			vm.push(a.(int64) + v)
+			vm.push(aVal + bVal)
 		case float64:
-			vm.push(float64(a.(int64)) + v)
+			vm.push(float64(aVal) + bVal)
 		case string:
-			vm.push(fmt.Sprintf("%d%s", a.(int64), v))
+			vm.push(fmt.Sprintf("%d%s", aVal, bVal))
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
 			return InterpretResultRuntimeError
 		}
 	case float64:
-		switch v := b.(type) {
+		switch bVal := b.(type) {
 		case int64:
-			vm.push(a.(float64) + float64(v))
+			vm.push(aVal + float64(bVal))
 		case float64:
-			vm.push(a.(float64) + v)
+			vm.push(aVal + bVal)
 		case string:
-			vm.push(fmt.Sprintf("%f%s", a.(float64), v))
+			vm.push(fmt.Sprintf("%f%s", aVal, bVal))
 		default:
 			log.Error("Operand must be a number", log.A("a", a), log.A("b", b))
 
 			return InterpretResultRuntimeError
 		}
 	case string:
-		switch v := b.(type) {
+		switch bVal := b.(type) {
 		case int64:
-			vm.push(fmt.Sprintf("%s%d", a.(string), v))
+			vm.push(fmt.Sprintf("%s%d", aVal, bVal))
 		case float64:
-			vm.push(fmt.Sprintf("%s%f", a.(string), v))
+			vm.push(fmt.Sprintf("%s%f", aVal, bVal))
 		case string:
-			vm.push(a.(string) + v)
+			vm.push(aVal + bVal)
 		default:
 			log.Error("Operand must be a number or string", log.A("a", a), log.A("b", b))
 

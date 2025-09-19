@@ -106,6 +106,12 @@ func (vm *VM) popN(n int) bytecode.Value {
 }
 
 func (vm *VM) run() InterpretResult {
+	defer func() {
+		if len(vm.stack) > 0 {
+			log.Warn("Stack not empty", log.A("stack", vm.stack))
+		}
+	}()
+
 	for vm.ip < vm.chunk.Size() {
 		instruction := vm.getOp()
 		ip := vm.ip - 1
@@ -135,4 +141,5 @@ func (vm *VM) run() InterpretResult {
 	}
 
 	return InterpretResultOK
+
 }

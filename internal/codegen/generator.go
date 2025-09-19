@@ -13,6 +13,7 @@ const _POPN_THRESHOLD = 3
 type loopCtx struct {
 	loopStart int
 	breaks    []int
+	continues []int
 }
 
 type CodeGenerator struct {
@@ -411,13 +412,29 @@ func (g *CodeGenerator) VisitWhileStmt(stmt *ast.While) any {
 		return err
 	}
 
+	// Body에서 사용된 continue 들을 이 곳으로 patch
+	for _, continuePos := range currentLoopCtx.continues {
+		g.patchJump(continuePos)
+	}
+
+	// Post 처리
+	if stmt.Post != nil {
+		if err := stmt.Post.Accept(g); err != nil {
+			return err
+		}
+
+		g.emit(stmt.Offset, bytecode.OP_POP)
+	}
+
+	// goto loopStart
 	j := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
 	g.patchJumpTo(j, loopStart)
 
+	// loop 종료
 	g.patchJump(endJump)
 	g.emit(stmt.Offset, bytecode.OP_POP)
 
-	// break 처리
+	// Body에서 사용된 break 들을 이 곳으로 patch
 	for _, breakPos := range currentLoopCtx.breaks {
 		g.patchJump(breakPos)
 	}
@@ -448,11 +465,13 @@ func (g *CodeGenerator) VisitContinueStmt(stmt *ast.Continue) any {
 		return errors.New("continue statement not within a loop")
 	}
 
+	loopCtx := g.loopCtx[len(g.loopCtx)-1]
+
 	popCount := g.bindings[stmt.NodeId].Slot
 	g.emitPop(stmt.Offset, popCount)
 
-	j := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
-	g.patchJumpTo(j, g.loopCtx[len(g.loopCtx)-1].loopStart)
+	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
+	loopCtx.continues = append(loopCtx.continues, jump)
 
 	return nil
 }

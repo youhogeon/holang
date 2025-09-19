@@ -377,6 +377,10 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
 	stmt.Condition.Accept(r)
 
+	if stmt.Post != nil {
+		stmt.Post.Accept(r)
+	}
+
 	r.loopDepthStack = append(r.loopDepthStack, r.nextSlot)
 	stmt.Body.Accept(r)
 	r.loopDepthStack = r.loopDepthStack[:len(r.loopDepthStack)-1]
