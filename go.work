@@ -8,6 +8,7 @@ use (
 	./internal/interpreter
 	./internal/parser
 	./internal/resolver
+	./internal/runtime
 	./internal/scanner
 	./internal/token
 	./internal/util

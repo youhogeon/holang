@@ -1,16 +1,20 @@
-package vm
+package runtime
 
 import "container/list"
 
 type ObjectType byte
 
-// const (
-// 	ObjectTypeString ObjectType = iota
-// )
+const (
+	OBJ_FUNCTION ObjectType = iota
+)
 
-type Object struct {
-	ObjectType ObjectType
-	Value      any
+// type Object struct {
+// 	ObjectType ObjectType
+// 	Value      any
+// }
+
+type Object interface {
+	ObjectType() ObjectType
 }
 
 type ObjectList struct {

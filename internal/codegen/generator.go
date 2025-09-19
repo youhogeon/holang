@@ -44,14 +44,6 @@ func (g *CodeGenerator) Generate(statements []ast.Stmt) error {
 	return nil
 }
 
-func (g *CodeGenerator) genExpr(e ast.Expr) error {
-	if result := e.Accept(g); result != nil {
-		return result.(error)
-	}
-
-	return nil
-}
-
 func (g *CodeGenerator) genStmt(s ast.Stmt) error {
 	if result := s.Accept(g); result != nil {
 		return result.(error)

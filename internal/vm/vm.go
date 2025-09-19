@@ -2,6 +2,7 @@ package vm
 
 import (
 	"internal/bytecode"
+	"internal/runtime"
 	"internal/util/log"
 )
 
@@ -10,13 +11,13 @@ type VM struct {
 	ip      int
 	stack   []bytecode.Value
 	globals map[string]bytecode.Value
-	objects *ObjectList
+	objects *runtime.ObjectList
 }
 
 func NewVM() *VM {
 	return &VM{
 		globals: make(map[string]bytecode.Value),
-		objects: NewObjectList(),
+		objects: runtime.NewObjectList(),
 	}
 }
 
@@ -29,7 +30,7 @@ func (vm *VM) Free() {
 	vm.ip = 0
 	vm.stack = vm.stack[:0]
 	vm.globals = make(map[string]bytecode.Value)
-	vm.objects = NewObjectList()
+	vm.objects = runtime.NewObjectList()
 }
 
 func (vm *VM) Interpret(chunk *bytecode.Chunk) InterpretResult {
