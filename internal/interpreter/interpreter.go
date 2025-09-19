@@ -42,14 +42,14 @@ func NewInterpreter() *Interpreter {
 	}
 }
 
-func (i *Interpreter) Interpret(program []ast.Stmt) (err error) {
+func (i *Interpreter) Interpret(program *ast.Program) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = NewRuntimeErrorWithLog(fmt.Sprint(r))
 		}
 	}()
 
-	for _, stmt := range program {
+	for _, stmt := range program.Statements {
 		err = i.execute(stmt)
 
 		if err != nil {

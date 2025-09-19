@@ -95,12 +95,12 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	}
 
 	r_ := interpreter_.NewResolver(interpreter)
-	err := r_.Resolve(statements)
+	err := r_.Resolve(program)
 
 	log.Debug("Resolve complete", log.E(err))
 
 	if err == nil {
-		err = interpreter.Interpret(statements)
+		err = interpreter.Interpret(program)
 
 		log.Debug("Interpret complete", log.E(err))
 	}
@@ -109,7 +109,7 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	// Resolve
 	// ================================================================
 	r := resolver.NewResolver()
-	bindings, errs := r.Resolve(statements)
+	bindings, errs := r.Resolve(program)
 
 	log.Debug("Resolve complete", log.A("bindings", bindings), log.A("errors", errs))
 
@@ -120,10 +120,9 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	// ================================================================
 	// Codegen
 	// ================================================================
-
 	gen := codegen.NewCodeGenerator(bindings)
 
-	rootFn, err := gen.Generate(statements)
+	rootFn, err := gen.Generate(program)
 	if err != nil {
 		log.Error("Codegen error", log.E(err))
 

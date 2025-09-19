@@ -35,11 +35,11 @@ func NewCodeGenerator(bindings resolver.BindingResult) *CodeGenerator {
 	}
 }
 
-func (g *CodeGenerator) Generate(statements []ast.Stmt) (*runtime.ObjFunction, error) {
+func (g *CodeGenerator) Generate(program *ast.Program) (*runtime.ObjFunction, error) {
 	rootFn := runtime.NewObjFunction("<script>", 0, runtime.FUNCTION_TYPE_SCRIPT)
 	g.beginFunction(rootFn)
 
-	err := g.genStmts(statements)
+	err := g.genStmts(program.Statements)
 
 	if err != nil {
 		return nil, err.(error)

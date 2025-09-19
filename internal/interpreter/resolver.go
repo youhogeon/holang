@@ -22,8 +22,8 @@ func NewResolver(interpreter *Interpreter) *Resolver {
 	}
 }
 
-func (r *Resolver) Resolve(statements []ast.Stmt) error {
-	err := r.resolveStmts(statements)
+func (r *Resolver) Resolve(program *ast.Program) error {
+	err := r.resolveStmts(program.Statements)
 	if err != nil {
 		log.Error("Resolve error", log.E(err))
 	}

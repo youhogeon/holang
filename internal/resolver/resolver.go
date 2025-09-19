@@ -68,10 +68,10 @@ func (r *Resolver) clear() {
 	r.errors = r.errors[:0]
 }
 
-func (r *Resolver) Resolve(statements []ast.Stmt) (BindingResult, []error) {
+func (r *Resolver) Resolve(program *ast.Program) (BindingResult, []error) {
 	r.clear()
 
-	for _, stmt := range statements {
+	for _, stmt := range program.Statements {
 		stmt.Accept(r)
 	}
 

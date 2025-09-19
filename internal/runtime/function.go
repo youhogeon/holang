@@ -39,6 +39,7 @@ func (f ObjFunction) String() string {
 }
 
 func (f *ObjFunction) Disassemble() {
+	log.Debug("================================================================")
 	log.Debug("Disassemble ObjFunction", log.S("function", f.String()))
 	f.Chunk.Disassemble()
 
