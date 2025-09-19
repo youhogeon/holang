@@ -34,7 +34,7 @@ func (f *ObjFunction) ObjectType() ObjectType {
 	return OBJ_FUNCTION
 }
 
-func (f ObjFunction) String() string {
+func (f *ObjFunction) String() string {
 	return "<fun " + f.Name + ">"
 }
 
@@ -50,8 +50,8 @@ func (f *ObjFunction) Disassemble() {
 
 		log.Debug("Constant", log.I("index", i), log.A("value", constant))
 
-		if v, ok := constant.(ObjFunction); ok {
-			fns = append(fns, &v)
+		if v, ok := constant.(*ObjFunction); ok {
+			fns = append(fns, v)
 		}
 	}
 

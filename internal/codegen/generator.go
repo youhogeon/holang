@@ -84,10 +84,6 @@ func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
 // ================================================================
 
 func (g *CodeGenerator) getEmitter() Emitter {
-	if len(g.funcCtx) == 0 {
-		return nil
-	}
-
 	return g.funcCtx[len(g.funcCtx)-1].em
 }
 
@@ -122,6 +118,8 @@ func (g *CodeGenerator) patchJumpTo(jumpOpLoc int, jumpTo int) {
 func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
 	if popCnt >= _POPN_THRESHOLD {
 		g.emit(offset, bytecode.OP_POPN, int64(popCnt))
+
+		return
 	}
 
 	for range popCnt {
@@ -404,7 +402,7 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	g.endFunction()
 
 	// define
-	constant := g.makeConstant(*fnObj)
+	constant := g.makeConstant(fnObj)
 	g.emit(stmt.Offset, bytecode.OP_CONSTANT, constant)
 
 	if binding.Kind == resolver.BindLocal {
