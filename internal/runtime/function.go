@@ -1,6 +1,9 @@
 package runtime
 
-import "internal/bytecode"
+import (
+	"internal/bytecode"
+	"internal/util/log"
+)
 
 type FunctionType byte
 
@@ -27,10 +30,31 @@ func NewObjFunction(name string, arity int, ftype FunctionType) *ObjFunction {
 	}
 }
 
-func (of *ObjFunction) ObjectType() ObjectType {
+func (f *ObjFunction) ObjectType() ObjectType {
 	return OBJ_FUNCTION
 }
 
-func (of *ObjFunction) String() string {
-	return "<fun " + of.Name + ">"
+func (f ObjFunction) String() string {
+	return "<fun " + f.Name + ">"
+}
+
+func (f *ObjFunction) Disassemble() {
+	log.Debug("Disassemble ObjFunction", log.S("function", f.String()))
+	f.Chunk.Disassemble()
+
+	fns := make([]*ObjFunction, 0)
+
+	for i := range f.Chunk.CountConstants() {
+		constant := f.Chunk.GetConstant(int64(i))
+
+		log.Debug("Constant", log.I("index", i), log.A("value", constant))
+
+		if v, ok := constant.(ObjFunction); ok {
+			fns = append(fns, &v)
+		}
+	}
+
+	for _, fn := range fns {
+		fn.Disassemble()
+	}
 }

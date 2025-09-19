@@ -60,6 +60,10 @@ func (c *Chunk) GetConstant(index int64) Value {
 	return c.constants[index]
 }
 
+func (c *Chunk) CountConstants() int {
+	return len(c.constants)
+}
+
 func (c *Chunk) GetOperator(index int) OpCode {
 	return OpCode(c.code[index])
 }
@@ -81,9 +85,7 @@ func (c *Chunk) OverWrite(at int, value byte) {
 	c.code[at] = value
 }
 
-func (c *Chunk) Disassemble() []string {
-	var dis []string
-
+func (c *Chunk) Disassemble() {
 	opIdx := 0
 	for pos := 0; pos < len(c.code); pos++ {
 		operator := OpCode(c.code[pos])
@@ -105,11 +107,8 @@ func (c *Chunk) Disassemble() []string {
 			}
 		}
 
-		dis = append(dis, operator.String())
-		log.Debug("Disassemble", log.I("pos", _pos), log.A("offset", c.offsets[opIdx]), log.A("operator", operator), log.A("operands", operands))
+		log.Debug("Bytecode", log.I("pos", _pos), log.A("offset", c.offsets[opIdx]), log.A("operator", operator), log.A("operands", operands))
 
 		opIdx += 1
 	}
-
-	return dis
 }

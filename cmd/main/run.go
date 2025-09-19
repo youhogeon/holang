@@ -130,10 +130,9 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 		return
 	}
 
-	ch := rootFn.Chunk
+	log.Debug("Codegen complete")
 
-	disassemble := ch.Disassemble()
-	log.Debug("Codegen complete", log.A("bytecode", disassemble))
+	rootFn.Disassemble()
 
 	// ================================================================
 	// Run

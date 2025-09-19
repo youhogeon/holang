@@ -23,7 +23,12 @@ const (
 
 type Binding struct {
 	Kind BindingKind
-	Slot int // Local 슬롯 인덱스. Global이면 -1, Block이면 Block 안의 local 개수
+
+	// BindGlobal이면 -1
+	// BindLocal이면 Local 슬롯 인덱스
+	// Block이면 Block 안의 local 개수
+	// Break, Continue이면 pop할 개수
+	Slot int
 }
 
 type BindingResult map[ast.NodeIdType]Binding
@@ -325,9 +330,37 @@ func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) any {
 }
 
 func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
+	slot, isLocal := r.declare(stmt.Name)
+
+	if isLocal {
+		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Slot: slot}
+	} else {
+		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Slot: -1}
+	}
+
+	r.define(stmt.Name)
+
+	// 새로운 frame
+	savedLocals := r.locals
+	savedNext := r.nextSlot
+	savedDepth := r.scopeDepth
+	savedLoop := r.loopDepthStack
+
+	r.locals = r.locals[:0]
+	r.nextSlot = 0
+	r.scopeDepth = 0
+	r.loopDepthStack = r.loopDepthStack[:0]
+
+	r.beginScope()
 	for _, bodyStmt := range stmt.Body {
 		bodyStmt.Accept(r)
 	}
+	r.endScope()
+
+	r.locals = savedLocals
+	r.nextSlot = savedNext
+	r.scopeDepth = savedDepth
+	r.loopDepthStack = savedLoop
 
 	return nil
 }

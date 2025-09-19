@@ -9,7 +9,7 @@ import (
 	"internal/token"
 )
 
-const _POPN_THRESHOLD = 3
+const _POPN_THRESHOLD = 2
 
 type loopCtx struct {
 	loopStart int
@@ -39,17 +39,25 @@ func (g *CodeGenerator) Generate(statements []ast.Stmt) (*runtime.ObjFunction, e
 	rootFn := runtime.NewObjFunction("<script>", 0, runtime.FUNCTION_TYPE_SCRIPT)
 	g.beginFunction(rootFn)
 
-	for _, stmt := range statements {
-		err := g.genStmt(stmt)
+	err := g.genStmts(statements)
 
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err.(error)
 	}
 
 	g.endFunction()
 
 	return rootFn, nil
+}
+
+func (g *CodeGenerator) genStmts(statements []ast.Stmt) any {
+	for _, stmt := range statements {
+		if result := stmt.Accept(g); result != nil {
+			return result
+		}
+	}
+
+	return nil
 }
 
 func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
@@ -71,20 +79,16 @@ func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
 	return fc.fn
 }
 
+// ================================================================
+// Emitter Helper
+// ================================================================
+
 func (g *CodeGenerator) getEmitter() Emitter {
 	if len(g.funcCtx) == 0 {
 		return nil
 	}
 
 	return g.funcCtx[len(g.funcCtx)-1].em
-}
-
-func (g *CodeGenerator) genStmt(s ast.Stmt) error {
-	if result := s.Accept(g); result != nil {
-		return result.(error)
-	}
-
-	return nil
 }
 
 func (g *CodeGenerator) getChunkSize() int {
@@ -354,10 +358,8 @@ func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 // ================================================================
 
 func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
-	for _, s := range stmt.Statements {
-		if err := g.genStmt(s); err != nil {
-			return err
-		}
+	if err := g.genStmts(stmt.Statements); err != nil {
+		return err
 	}
 
 	popCnt := g.bindings[stmt.NodeId].Slot
@@ -382,6 +384,36 @@ func (g *CodeGenerator) VisitExpressionStmt(stmt *ast.Expression) any {
 }
 
 func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
+	binding := g.bindings[stmt.NodeId]
+
+	fnObj := runtime.NewObjFunction(
+		stmt.Name.Lexeme,
+		len(stmt.Params),
+		runtime.FUNCTION_TYPE_FUN,
+	)
+
+	// gen code
+	g.beginFunction(fnObj)
+
+	if err := g.genStmts(stmt.Body); err != nil {
+		g.endFunction()
+
+		return err
+	}
+
+	g.endFunction()
+
+	// define
+	constant := g.makeConstant(*fnObj)
+	g.emit(stmt.Offset, bytecode.OP_CONSTANT, constant)
+
+	if binding.Kind == resolver.BindLocal {
+		return nil // donothing
+	}
+
+	nameConst := g.makeConstant(stmt.Name.Lexeme)
+	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
+
 	return nil
 }
 
