@@ -2,30 +2,26 @@ package runtime
 
 import (
 	"internal/util/log"
+	"io"
 )
 
-type FunctionType byte
+type ObjFunctionType byte
 
 const (
-	FUNCTION_TYPE_FUN FunctionType = iota
+	FUNCTION_TYPE_FUN ObjFunctionType = iota
 	FUNCTION_TYPE_SCRIPT
-	FUNCTION_TYPE_NATIVE
 )
-
-// ================================================================
-// ObjFunction
-// ================================================================
 
 type ObjFunction struct {
 	Name         string
 	Arity        int
-	Type         FunctionType
+	Type         ObjFunctionType
 	UpvalueCount int
 
 	Chunk *Chunk
 }
 
-func NewObjFunction(name string, arity int, ftype FunctionType) *ObjFunction {
+func NewObjFunction(name string, arity int, ftype ObjFunctionType) *ObjFunction {
 	chunk := NewChunk()
 
 	return &ObjFunction{
@@ -70,34 +66,62 @@ func (f *ObjFunction) Disassemble() {
 	}
 }
 
-// ================================================================
-// ObjNativeFunction
-// ================================================================
-
-type NativeFunctionType func(args ...Value) (Value, error)
-
-type ObjNativeFunction struct {
-	Name     string
-	Arity    int
-	Function NativeFunctionType
-}
-
-func NewObjNativeFunction(name string, arity int, function NativeFunctionType) *ObjNativeFunction {
-	return &ObjNativeFunction{
-		Name:     name,
-		Arity:    arity,
-		Function: function,
+func (f *ObjFunction) Serialize(w io.Writer) error {
+	if _, err := w.Write([]byte{byte(f.ObjectType())}); err != nil {
+		return err
 	}
+
+	if err := writeString(w, f.Name); err != nil {
+		return err
+	}
+
+	if err := writeInt(w, int64(f.Arity)); err != nil {
+		return err
+	}
+
+	if _, err := w.Write([]byte{byte(f.Type)}); err != nil {
+		return err
+	}
+
+	if err := writeInt(w, int64(f.UpvalueCount)); err != nil {
+		return err
+	}
+
+	return f.Chunk.Serialize(w)
 }
 
-func (f *ObjNativeFunction) ObjectType() ObjectType {
-	return OBJ_NATIVE_FUNCTION
-}
+func (f *ObjFunction) Deserialize(data []byte) (any, []byte, error) {
+	if data[0] != byte(f.ObjectType()) {
+		return nil, nil, io.ErrUnexpectedEOF
+	}
 
-func (f *ObjNativeFunction) String() string {
-	return "<native fun " + f.Name + ">"
-}
+	name, data, err := readString(data[1:])
+	if err != nil {
+		return nil, nil, err
+	}
 
-func (f *ObjNativeFunction) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + f.String() + `"`), nil
+	arity, data, err := readInt(data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fnType := ObjFunctionType(data[0])
+
+	upvalueCount, data, err := readInt(data[1:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	chunk, data, err := (&Chunk{}).Deserialize(data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &ObjFunction{
+		Name:         name,
+		Arity:        int(arity),
+		Type:         fnType,
+		UpvalueCount: int(upvalueCount),
+		Chunk:        chunk.(*Chunk),
+	}, data, nil
 }

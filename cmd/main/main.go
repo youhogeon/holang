@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-	// Simple arg parsing: --debug optional + optional file
 	args := os.Args[1:]
 	var fileName string
 

@@ -11,6 +11,7 @@ const (
 
 type Object interface {
 	ObjectType() ObjectType
+	serializable
 }
 
 // type ObjectList struct {

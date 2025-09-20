@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"strconv"
@@ -29,6 +30,87 @@ var NativeFunctions = []*ObjNativeFunction{
 
 	NewObjNativeFunction("getCh", 0, nativeGetCh),
 }
+
+type NativeFunctionType func(args ...Value) (Value, error)
+
+type ObjNativeFunction struct {
+	Name     string
+	Arity    int
+	Function NativeFunctionType
+}
+
+func NewObjNativeFunction(name string, arity int, function NativeFunctionType) *ObjNativeFunction {
+	return &ObjNativeFunction{
+		Name:     name,
+		Arity:    arity,
+		Function: function,
+	}
+}
+
+func (f *ObjNativeFunction) ObjectType() ObjectType {
+	return OBJ_NATIVE_FUNCTION
+}
+
+func (f *ObjNativeFunction) String() string {
+	return "<native fun " + f.Name + ">"
+}
+
+func (f *ObjNativeFunction) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + f.String() + `"`), nil
+}
+
+func (f *ObjNativeFunction) Serialize(w io.Writer) error {
+	if _, err := w.Write([]byte{byte(f.ObjectType())}); err != nil {
+		return err
+	}
+
+	if err := writeString(w, f.Name); err != nil {
+		return err
+	}
+
+	if err := writeInt(w, int64(f.Arity)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *ObjNativeFunction) Deserialize(data []byte) (any, []byte, error) {
+	if data[0] != byte(f.ObjectType()) {
+		return nil, nil, io.ErrUnexpectedEOF
+	}
+
+	name, data, err := readString(data[1:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	arity, data, err := readInt(data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var nativeFunc NativeFunctionType
+	for _, nf := range NativeFunctions {
+		if nf.Name == name && nf.Arity == int(arity) {
+			nativeFunc = nf.Function
+			break
+		}
+	}
+	if nativeFunc == nil {
+		return nil, nil, errors.New("unknown native function: " + name)
+	}
+
+	return &ObjNativeFunction{
+		Name:     name,
+		Arity:    int(arity),
+		Function: nativeFunc,
+	}, data, nil
+}
+
+// ================================================================
+// Implementation of native functions
+// ================================================================
 
 func nativePrint(args ...Value) (Value, error) {
 	fmt.Println(args[0])

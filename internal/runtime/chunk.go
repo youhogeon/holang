@@ -6,9 +6,8 @@ import (
 	"internal/bytecode"
 	"internal/token"
 	"internal/util/log"
+	"io"
 )
-
-type Value any
 
 type Chunk struct {
 	code      []byte
@@ -123,4 +122,102 @@ func (c *Chunk) Disassemble() {
 
 		opIdx += 1
 	}
+}
+
+func (c *Chunk) Serialize(w io.Writer) error {
+	{
+		len := int64(len(c.code))
+		if err := writeInt(w, len); err != nil {
+			return err
+		}
+
+		if _, err := w.Write(c.code); err != nil {
+			return err
+		}
+	}
+
+	{
+		len := int64(len(c.constants))
+		if err := writeInt(w, len); err != nil {
+			return err
+		}
+
+		for _, constant := range c.constants {
+			if err := SerializeValue(w, constant); err != nil {
+				return err
+			}
+		}
+	}
+
+	{
+		len := int64(len(c.offsets))
+		if err := writeInt(w, len); err != nil {
+			return err
+		}
+
+		for _, offset := range c.offsets {
+			if err := writeInt(w, int64(offset.Line)); err != nil {
+				return err
+			}
+
+			if err := writeInt(w, int64(offset.Index)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Chunk) Deserialize(data []byte) (any, []byte, error) {
+	codeLen, rest, err := readInt(data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if int64(len(rest)) < codeLen {
+		return nil, nil, io.EOF
+	}
+
+	code := rest[:codeLen]
+	rest = rest[codeLen:]
+
+	constCount, rest2, err := readInt(rest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	constants := make([]Value, 0, constCount)
+	for i := int64(0); i < constCount; i++ {
+		constant, _rest, err := DeserializeValue(rest2)
+		if err != nil {
+			return nil, nil, err
+		}
+		constants = append(constants, constant)
+		rest2 = _rest
+	}
+
+	offsetCount, rest3, err := readInt(rest2)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	offsets := make([]token.Offset, 0, offsetCount)
+	for i := int64(0); i < offsetCount; i++ {
+		line, _r, err := readInt(rest3)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		index, _r2, err := readInt(_r)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		offsets = append(offsets, token.Offset{Line: int(line), Index: int(index)})
+		rest3 = _r2
+	}
+
+	chunk := &Chunk{code: code, constants: constants, offsets: offsets}
+	return chunk, rest3, nil
 }
