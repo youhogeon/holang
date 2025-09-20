@@ -26,7 +26,7 @@ type CodeGenerator struct {
 	bindings resolver.BindingResult
 
 	loopCtx []*loopCtx
-	funcCtx []*functionCtx
+	fnCtx   []*functionCtx
 }
 
 func NewCodeGenerator(bindings resolver.BindingResult) *CodeGenerator {
@@ -65,15 +65,21 @@ func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
 	ch := fn.Chunk
 	em := NewChunkEmitter(ch)
 
-	g.funcCtx = append(g.funcCtx, &functionCtx{
+	g.fnCtx = append(g.fnCtx, &functionCtx{
 		fn: fn,
 		em: em,
 	})
 }
 
 func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
-	fc := g.funcCtx[len(g.funcCtx)-1]
-	g.funcCtx = g.funcCtx[:len(g.funcCtx)-1]
+	fc := g.fnCtx[len(g.fnCtx)-1]
+
+	if fc.fn.Type != runtime.FUNCTION_TYPE_SCRIPT {
+		g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_NIL)
+		g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_RETURN)
+	}
+
+	g.fnCtx = g.fnCtx[:len(g.fnCtx)-1]
 
 	return fc.fn
 }
@@ -83,7 +89,7 @@ func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
 // ================================================================
 
 func (g *CodeGenerator) getEmitter() Emitter {
-	return g.funcCtx[len(g.funcCtx)-1].em
+	return g.fnCtx[len(g.fnCtx)-1].em
 }
 
 func (g *CodeGenerator) getChunkSize() int {
@@ -115,6 +121,10 @@ func (g *CodeGenerator) patchJumpTo(jumpOpLoc int, jumpTo int) {
 }
 
 func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
+	if popCnt <= 0 {
+		return
+	}
+
 	if popCnt >= _POPN_THRESHOLD {
 		g.emit(offset, bytecode.OP_POPN, int64(popCnt))
 
@@ -124,6 +134,14 @@ func (g *CodeGenerator) emitPop(offset token.Offset, popCnt int) {
 	for range popCnt {
 		g.emit(offset, bytecode.OP_POP)
 	}
+}
+
+func (g *CodeGenerator) emitCloseUpvalues(offset token.Offset, n int) {
+	if n <= 0 {
+		return
+	}
+
+	g.emit(offset, bytecode.OP_CLOSE_UPVALUE, int64(n))
 }
 
 func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
@@ -180,14 +198,17 @@ func (g *CodeGenerator) VisitAssignExpr(expr *ast.Assign) any {
 		return err
 	}
 
-	if binding.Kind == resolver.BindLocal {
-		g.emit(expr.Offset, bytecode.OP_SET_LOCAL, int64(binding.Local))
+	op := bytecode.OP_SET_LOCAL
+	v := int64(binding.Index)
 
-		return nil
+	if binding.Kind == resolver.BindUpvalue {
+		op = bytecode.OP_SET_UPVALUE
+	} else if binding.Kind == resolver.BindGlobal {
+		op = bytecode.OP_SET_GLOBAL
+		v = g.makeConstant(expr.Name.Lexeme)
 	}
 
-	constant := g.makeConstant(expr.Name.Lexeme)
-	g.emit(expr.Offset, bytecode.OP_SET_GLOBAL, constant)
+	g.emit(expr.Offset, op, v)
 
 	return nil
 }
@@ -350,14 +371,17 @@ func (g *CodeGenerator) VisitUnaryExpr(expr *ast.Unary) any {
 func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 	binding := g.bindings[expr.NodeId]
 
-	if binding.Kind == resolver.BindLocal {
-		g.emit(expr.Offset, bytecode.OP_GET_LOCAL, int64(binding.Local))
+	op := bytecode.OP_GET_LOCAL
+	v := int64(binding.Index)
 
-		return nil
+	if binding.Kind == resolver.BindUpvalue {
+		op = bytecode.OP_GET_UPVALUE
+	} else if binding.Kind == resolver.BindGlobal {
+		op = bytecode.OP_GET_GLOBAL
+		v = g.makeConstant(expr.Name.Lexeme)
 	}
 
-	constant := g.makeConstant(expr.Name.Lexeme)
-	g.emit(expr.Offset, bytecode.OP_GET_GLOBAL, constant)
+	g.emit(expr.Offset, op, v)
 
 	return nil
 }
@@ -367,13 +391,14 @@ func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 // ================================================================
 
 func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
+	b := g.bindings[stmt.NodeId]
+
 	if err := g.genStmts(stmt.Statements); err != nil {
 		return err
 	}
 
-	popCnt := g.bindings[stmt.NodeId].Local
-
-	g.emitPop(stmt.Offset, popCnt)
+	g.emitPop(stmt.Offset, b.Slots-b.Closes)
+	g.emitCloseUpvalues(stmt.Offset, b.Closes)
 
 	return nil
 }
@@ -404,20 +429,39 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	// gen code
 	g.beginFunction(fnObj)
 
-	if err := g.genStmts(stmt.Body); err != nil {
-		g.endFunction()
+	err := g.genStmts(stmt.Body)
+	g.emitCloseUpvalues(stmt.Offset, binding.Closes)
+
+	g.endFunction()
+
+	if err != nil {
 
 		return err
 	}
 
-	g.endFunction()
-
-	// define
+	// closure
+	uvCount := len(binding.Upvalues)
+	argCount := int64(1 + 2*uvCount)
+	fnObj.UpvalueCount = uvCount
+	args := make([]int64, 0, argCount+1)
 	constant := g.makeConstant(fnObj)
-	g.emit(stmt.Offset, bytecode.OP_CLOSURE, constant)
+
+	args = append(args, argCount)
+	args = append(args, constant)
+
+	for _, up := range binding.Upvalues {
+		if up.IsLocal {
+			args = append(args, 1, int64(up.Index))
+		} else {
+			args = append(args, 0, int64(up.Index))
+		}
+	}
+
+	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
 	if binding.Kind == resolver.BindLocal {
-		return nil // donothing
+		// g.emit(stmt.Offset, bytecode.OP_SET_LOCAL, int64(binding.Index))
+		return nil
 	}
 
 	nameConst := g.makeConstant(stmt.Name.Lexeme)
@@ -464,8 +508,12 @@ func (g *CodeGenerator) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (g *CodeGenerator) VisitReturnStmt(stmt *ast.Return) any {
-	if err := stmt.Value.Accept(g); err != nil {
-		return err
+	if stmt.Value != nil {
+		if err := stmt.Value.Accept(g); err != nil {
+			return err
+		}
+	} else {
+		g.emit(stmt.Offset, bytecode.OP_NIL)
 	}
 
 	g.emit(stmt.Offset, bytecode.OP_RETURN)
@@ -555,8 +603,10 @@ func (g *CodeGenerator) VisitBreakStmt(stmt *ast.Break) any {
 
 	loopCtx := g.loopCtx[len(g.loopCtx)-1]
 
-	popCount := g.bindings[stmt.NodeId].Local
-	g.emitPop(stmt.Offset, popCount)
+	b := g.bindings[stmt.NodeId]
+
+	g.emitPop(stmt.Offset, b.Slots-b.Closes)
+	g.emitCloseUpvalues(stmt.Offset, b.Closes)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
 	loopCtx.breaks = append(loopCtx.breaks, jump)
@@ -571,8 +621,10 @@ func (g *CodeGenerator) VisitContinueStmt(stmt *ast.Continue) any {
 
 	loopCtx := g.loopCtx[len(g.loopCtx)-1]
 
-	popCount := g.bindings[stmt.NodeId].Local
-	g.emitPop(stmt.Offset, popCount)
+	b := g.bindings[stmt.NodeId]
+
+	g.emitPop(stmt.Offset, b.Slots-b.Closes)
+	g.emitCloseUpvalues(stmt.Offset, b.Closes)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
 	loopCtx.continues = append(loopCtx.continues, jump)

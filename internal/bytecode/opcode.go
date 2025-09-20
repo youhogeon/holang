@@ -5,10 +5,6 @@ type OpCode byte
 
 // ================================================================
 // OP codes
-// --------
-// 1. const 정의
-// 1. (필요 시) operandsCount 추가
-// 1. operation.go 구현
 // ================================================================
 
 const (
@@ -28,7 +24,6 @@ const (
 	// UNARY, TERNARY
 	OP_NEGATE
 	OP_NOT
-	// OP_TERNARY
 
 	// BINARY
 	OP_ADD
@@ -63,6 +58,7 @@ const (
 	OP_CLOSURE
 	OP_GET_UPVALUE
 	OP_SET_UPVALUE
+	OP_CLOSE_UPVALUE
 
 	// SPECIAL
 	OP_PRINT
@@ -79,7 +75,10 @@ var operandsCount = map[OpCode]int{
 	OP_JUMP:          1,
 	OP_JUMP_IF_FALSE: 1,
 	OP_CALL:          1,
-	OP_CLOSURE:       1,
+	OP_CLOSURE:       -1, // 가변
+	OP_GET_UPVALUE:   1,
+	OP_SET_UPVALUE:   1,
+	OP_CLOSE_UPVALUE: 1,
 }
 
 func (op OpCode) OperandsCount() int {

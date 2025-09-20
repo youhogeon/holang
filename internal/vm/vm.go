@@ -22,7 +22,8 @@ type VM struct {
 
 	globals map[string]bytecode.Value
 	builtin map[string]bytecode.Value
-	objects *runtime.ObjectList
+
+	openUpvalues []*runtime.ObjUpvalue
 }
 
 func NewVM() *VM {
@@ -31,9 +32,11 @@ func NewVM() *VM {
 
 func (vm *VM) Free() {
 	vm.callFrames = vm.callFrames[:0]
+	vm.stack = vm.stack[:0]
+
 	vm.globals = make(map[string]bytecode.Value)
 	vm.builtin = make(map[string]bytecode.Value)
-	vm.objects = runtime.NewObjectList()
+	vm.openUpvalues = vm.openUpvalues[:0]
 
 	vm.initNativeFunctions()
 }

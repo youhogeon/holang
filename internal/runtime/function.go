@@ -18,9 +18,11 @@ const (
 // ================================================================
 
 type ObjFunction struct {
-	Name  string
-	Arity int
-	Type  FunctionType
+	Name         string
+	Arity        int
+	Type         FunctionType
+	UpvalueCount int
+
 	Chunk *bytecode.Chunk
 }
 
@@ -90,7 +92,7 @@ func NewObjNativeFunction(name string, arity int, function NativeFunctionType) *
 }
 
 func (f *ObjNativeFunction) ObjectType() ObjectType {
-	return OBJ_FUNCTION
+	return OBJ_NATIVE_FUNCTION
 }
 
 func (f *ObjNativeFunction) String() string {

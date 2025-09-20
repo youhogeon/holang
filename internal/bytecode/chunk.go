@@ -24,6 +24,10 @@ func (c *Chunk) AddOperator(offset token.Offset, op OpCode, operands ...int64) {
 	c.offsets = append(c.offsets, offset)
 
 	operandsCount := op.OperandsCount()
+	if operandsCount == -1 { // 가변
+		operandsCount = int(operands[0]) + 1
+	}
+
 	if len(operands) != operandsCount {
 		log.Error("operands count mismatch", log.I("expected", operandsCount), log.I("got", len(operands)), log.A("offset", offset), log.S("operator", op.String()), log.A("operands", operands))
 	}
@@ -92,14 +96,21 @@ func (c *Chunk) Disassemble() {
 		_pos := pos
 
 		operandsCount := operator.OperandsCount()
+		if operandsCount == -1 { // 가변
+			x, _ := c.GetOperand(pos + 1)
+			operandsCount = int(x) + 1
+		}
+
 		operands := make([]any, operandsCount)
 
 		for j := range operandsCount {
-			x, n := c.GetOperand(pos + 1 + j)
+			x, n := c.GetOperand(pos + 1)
 			pos += n
 
 			if operator == OP_CONSTANT {
 				operands[j] = fmt.Sprintf("%d (value: %v)", x, c.GetConstant(x))
+			} else if operator == OP_DEFINE_GLOBAL || operator == OP_GET_GLOBAL || operator == OP_SET_GLOBAL {
+				operands[j] = fmt.Sprintf("%d (name: %v)", x, c.GetConstant(x))
 			} else if operator == OP_JUMP || operator == OP_JUMP_IF_FALSE {
 				operands[j] = fmt.Sprintf("%d (target: %d)", x, int64(pos)+x+1)
 			} else {

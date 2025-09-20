@@ -22,10 +22,9 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_CONSTANT_4,
 	(*VM).OP_CONSTANT_5,
 
-	// UNARY, TERNARY
+	// UNARY
 	(*VM).OP_NEGATE,
 	(*VM).OP_NOT,
-	// (*VM).OP_TERNARY,
 
 	// BINARY
 	(*VM).OP_ADD,
@@ -60,6 +59,7 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_CLOSURE,
 	(*VM).OP_GET_UPVALUE,
 	(*VM).OP_SET_UPVALUE,
+	(*VM).OP_CLOSE_UPVALUE,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -464,7 +464,7 @@ func (vm *VM) OP_CALL() InterpretResult {
 	case *runtime.ObjFunction:
 		return vm.callFunction(callee, argCount)
 	case *runtime.ObjClosure:
-		return vm.callFunction(callee.Function, argCount)
+		return vm.callClosure(callee, argCount)
 	case *runtime.ObjNativeFunction:
 		return vm.callNativeFunction(callee, argCount)
 	default:
@@ -535,6 +535,8 @@ func (vm *VM) OP_RETURN() InterpretResult {
 	result := vm.pop()
 	frame := vm.currentFrame()
 
+	vm.closeUpvaluesFrom(frame.sp + 1)
+
 	vm.callFrames = vm.callFrames[:len(vm.callFrames)-1]
 	vm.stack = vm.stack[:frame.sp]
 	vm.push(result)
@@ -543,20 +545,114 @@ func (vm *VM) OP_RETURN() InterpretResult {
 }
 
 func (vm *VM) OP_CLOSURE() InterpretResult {
+	frame := vm.currentFrame()
+
+	_ = int(vm.getOperand())
 	constant := vm.getConstant()
+
 	fn := constant.(*runtime.ObjFunction)
 	closure := runtime.NewObjClosure(fn)
+
 	vm.push(closure)
+
+	uvCount := fn.UpvalueCount
+	for i := 0; i < uvCount; i++ {
+		isLocal := vm.getOperand()
+		index := vm.getOperand()
+
+		if isLocal == 1 {
+			closure.Upvalues[i] = vm.captureUpvalue(frame.sp + int(index))
+		} else {
+			closure.Upvalues[i] = frame.closure.Upvalues[index]
+		}
+	}
 
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_GET_UPVALUE() InterpretResult {
+	frame := vm.currentFrame()
+	slot := vm.getOperand()
+
+	uv := frame.closure.Upvalues[slot]
+	vm.push(uv.Get())
+
 	return InterpretResultOK
 }
 
 func (vm *VM) OP_SET_UPVALUE() InterpretResult {
+	frame := vm.currentFrame()
+	slot := vm.getOperand()
+
+	uv := frame.closure.Upvalues[slot]
+	uv.Set(vm.peek(0))
+
 	return InterpretResultOK
+}
+
+func (vm *VM) OP_CLOSE_UPVALUE() InterpretResult {
+	n := vm.getOperand()
+
+	for range n {
+		top := len(vm.stack) - 1
+
+		if top >= 0 {
+			vm.closeUpvalueAt(top)
+			vm.pop()
+		}
+	}
+
+	return InterpretResultOK
+}
+
+func (vm *VM) captureUpvalue(absIdx int) *runtime.ObjUpvalue {
+	stackRef := &vm.stack
+	for _, uv := range vm.openUpvalues {
+		if !uv.IsClosed && uv.Stack == stackRef && uv.Index == absIdx {
+			return uv
+		}
+	}
+
+	uv := &runtime.ObjUpvalue{
+		Stack: stackRef,
+		Index: absIdx,
+	}
+
+	vm.openUpvalues = append(vm.openUpvalues, uv)
+
+	return uv
+}
+
+func (vm *VM) closeUpvalueAt(absIdx int) {
+	write := 0
+	for _, uv := range vm.openUpvalues {
+		if !uv.IsClosed && uv.Stack == &vm.stack && uv.Index == absIdx {
+			uv.Close()
+			continue
+		}
+
+		vm.openUpvalues[write] = uv
+		write++
+	}
+
+	vm.openUpvalues = vm.openUpvalues[:write]
+}
+func (vm *VM) closeUpvaluesFrom(minIdx int) {
+	for _, uv := range vm.openUpvalues {
+		if !uv.IsClosed && uv.Stack == &vm.stack && uv.Index >= minIdx {
+			uv.Close()
+		}
+	}
+	// 닫힌 것들 제거
+	write := 0
+	for _, uv := range vm.openUpvalues {
+		if uv.IsClosed {
+			continue
+		}
+		vm.openUpvalues[write] = uv
+		write++
+	}
+	vm.openUpvalues = vm.openUpvalues[:write]
 }
 
 // ================================================================

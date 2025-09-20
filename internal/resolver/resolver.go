@@ -16,19 +16,27 @@ type BindingKind uint8
 const (
 	BindGlobal BindingKind = iota
 	BindLocal
+	BindUpvalue
 	Block
 	Break
 	Continue
+	Return
 )
 
 type Binding struct {
 	Kind BindingKind
 
 	// BindGlobal:		-1
-	// BindLocal:		Local 슬롯 인덱스
+	// BindLocal:		Index 슬롯 인덱스
+	// BindUpvalue:		Upvalue 인덱스
+	Index int
+
 	// Block:		    Block 안의 local 개수
 	// Break, Continue: pop해야 할 local 개수
-	Local int
+	Slots  int // POP 해야 할 개수
+	Closes int // CLOSE_UPVALUE 해야 할 개수
+
+	Upvalues []*UpValue
 }
 
 type BindingResult map[ast.NodeIdType]Binding
@@ -38,17 +46,29 @@ type BindingResult map[ast.NodeIdType]Binding
 // ================================================================
 
 type Local struct {
-	Name  *token.Token
-	Depth int // -1: 초기화 안됨
-	Slot  int
+	Name       *token.Token
+	Depth      int // -1: 초기화 안됨
+	Slot       int
+	IsCaptured bool
+}
+
+type UpValue struct {
+	Index   int
+	IsLocal bool
+}
+
+type functionCtx struct {
+	locals        []*Local
+	upvalues      []*UpValue
+	upIndexByName map[string]int
+	nextSlot      int
+	scopeDepth    int
+
+	loopDepthStack []int
 }
 
 type Resolver struct {
-	locals     []Local
-	nextSlot   int
-	scopeDepth int
-
-	loopDepthStack []int
+	fnCtx []*functionCtx
 
 	bindings BindingResult
 	errors   []error
@@ -59,13 +79,25 @@ func NewResolver() *Resolver {
 }
 
 func (r *Resolver) clear() {
-	r.locals = r.locals[:0]
-	r.nextSlot = 0
-	r.scopeDepth = 0
-	r.loopDepthStack = r.loopDepthStack[:0]
+	r.fnCtx = r.fnCtx[:0]
+	r.addFunctionCtx()
 
 	r.bindings = make(BindingResult)
 	r.errors = r.errors[:0]
+}
+
+func (r *Resolver) addFunctionCtx() *functionCtx {
+	ctx := &functionCtx{
+		upIndexByName: make(map[string]int),
+	}
+
+	r.fnCtx = append(r.fnCtx, ctx)
+
+	return ctx
+}
+
+func (r *Resolver) currentCtx() *functionCtx {
+	return r.fnCtx[len(r.fnCtx)-1]
 }
 
 func (r *Resolver) Resolve(program *ast.Program) (BindingResult, []error) {
@@ -79,31 +111,36 @@ func (r *Resolver) Resolve(program *ast.Program) (BindingResult, []error) {
 }
 
 func (r *Resolver) beginScope() {
-	r.scopeDepth++
+	ctx := r.currentCtx()
+	ctx.scopeDepth++
 }
 
 func (r *Resolver) endScope() {
-	if r.scopeDepth == 0 {
+	ctx := r.currentCtx()
+
+	if ctx.scopeDepth == 0 {
 		return
 	}
 
-	for len(r.locals) > 0 && r.locals[len(r.locals)-1].Depth >= r.scopeDepth {
-		r.locals = r.locals[:len(r.locals)-1]
-		r.nextSlot--
+	for len(ctx.locals) > 0 && ctx.locals[len(ctx.locals)-1].Depth >= ctx.scopeDepth {
+		ctx.locals = ctx.locals[:len(ctx.locals)-1]
+		ctx.nextSlot--
 	}
 
-	r.scopeDepth--
+	ctx.scopeDepth--
 }
 
 func (r *Resolver) declare(name *token.Token) (slot int, isLocal bool) {
-	if r.scopeDepth == 0 {
+	ctx := r.currentCtx()
+
+	if ctx.scopeDepth == 0 {
 		return -1, false
 	}
 
-	for i := len(r.locals) - 1; i >= 0; i-- {
-		local := r.locals[i]
+	for i := len(ctx.locals) - 1; i >= 0; i-- {
+		local := ctx.locals[i]
 
-		if local.Depth < r.scopeDepth && local.Depth >= 0 {
+		if local.Depth < ctx.scopeDepth && local.Depth >= 0 {
 			break
 		}
 
@@ -120,28 +157,35 @@ func (r *Resolver) declare(name *token.Token) (slot int, isLocal bool) {
 }
 
 func (r *Resolver) define(name *token.Token) {
-	if r.scopeDepth == 0 {
+	ctx := r.currentCtx()
+
+	if ctx.scopeDepth == 0 {
 		return
 	}
 
-	for i := len(r.locals) - 1; i >= 0; i-- {
-		local := r.locals[i]
+	for i := len(ctx.locals) - 1; i >= 0; i-- {
+		local := ctx.locals[i]
 
-		if local.Depth < r.scopeDepth && local.Depth >= 0 {
+		if local.Depth < ctx.scopeDepth && local.Depth >= 0 {
 			break
 		}
 
 		if local.Name.Lexeme == name.Lexeme {
-			local.Depth = r.scopeDepth
-			r.locals[i] = local
+			local.Depth = ctx.scopeDepth
+			ctx.locals[i] = local
 			return
 		}
 	}
 }
-
 func (r *Resolver) findLocal(name *token.Token) (int, bool) {
-	for i := len(r.locals) - 1; i >= 0; i-- {
-		local := r.locals[i]
+	ctx := r.currentCtx()
+
+	return r.findLocalIn(name, ctx)
+}
+
+func (r *Resolver) findLocalIn(name *token.Token, ctx *functionCtx) (int, bool) {
+	for i := len(ctx.locals) - 1; i >= 0; i-- {
+		local := ctx.locals[i]
 
 		if local.Name.Lexeme != name.Lexeme {
 			continue
@@ -160,17 +204,82 @@ func (r *Resolver) findLocal(name *token.Token) (int, bool) {
 }
 
 func (r *Resolver) addLocal(name *token.Token) (slot int) {
-	slot = r.nextSlot
+	ctx := r.currentCtx()
 
-	r.locals = append(r.locals, Local{
+	slot = ctx.nextSlot
+
+	ctx.locals = append(ctx.locals, &Local{
 		Name:  name,
 		Depth: -1,
 		Slot:  slot,
 	})
 
-	r.nextSlot++
+	ctx.nextSlot++
 
 	return
+}
+
+func (r *Resolver) addUpvalue(ctx *functionCtx, name string, index int, isLocal bool) int {
+	if upIndex, ok := ctx.upIndexByName[name]; ok {
+		return upIndex
+	}
+
+	upIndex := len(ctx.upvalues)
+
+	ctx.upvalues = append(ctx.upvalues, &UpValue{
+		Index:   index,
+		IsLocal: isLocal,
+	})
+
+	ctx.upIndexByName[name] = upIndex
+
+	return upIndex
+}
+
+func (r *Resolver) resolveUpvalue(name *token.Token) (int, bool) {
+	ctx := r.currentCtx()
+
+	for i := len(r.fnCtx) - 2; i >= 0; i-- {
+		outerCtx := r.fnCtx[i]
+
+		if slot, ok := r.findLocalIn(name, outerCtx); ok {
+			outerCtx.locals[slot].IsCaptured = true
+
+			isLocal := true
+			for j := i + 1; j < len(r.fnCtx); j++ {
+				innerCtx := r.fnCtx[j]
+				slot = r.addUpvalue(innerCtx, name.Lexeme, slot, isLocal)
+				isLocal = false
+			}
+
+			return slot, true
+		}
+
+		if upIndex, ok := outerCtx.upIndexByName[name.Lexeme]; ok {
+			return r.addUpvalue(ctx, name.Lexeme, upIndex, false), true
+		}
+	}
+
+	return -1, false
+}
+
+func (r *Resolver) countCloses(fromSlot int) int {
+	ctx := r.currentCtx()
+	closes := 0
+
+	for i := len(ctx.locals) - 1; i >= 0; i-- {
+		l := ctx.locals[i]
+
+		if l.Slot < fromSlot {
+			break
+		}
+
+		if l.IsCaptured {
+			closes++
+		}
+	}
+
+	return closes
 }
 
 func (r *Resolver) addError(message string) {
@@ -190,13 +299,24 @@ func (r *Resolver) VisitAssignExpr(expr *ast.Assign) any {
 	if slot, ok := r.findLocal(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
 			Kind:  BindLocal,
-			Local: slot,
+			Index: slot,
 		}
-	} else {
+
+		return nil
+	}
+
+	if uv, ok := r.resolveUpvalue(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindGlobal,
-			Local: -1,
+			Kind:  BindUpvalue,
+			Index: uv,
 		}
+
+		return nil
+	}
+
+	r.bindings[expr.NodeId] = Binding{
+		Kind:  BindGlobal,
+		Index: -1,
 	}
 
 	return nil
@@ -274,13 +394,24 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
 	if slot, ok := r.findLocal(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
 			Kind:  BindLocal,
-			Local: slot,
+			Index: slot,
 		}
-	} else {
+
+		return nil
+	}
+
+	if uv, ok := r.resolveUpvalue(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindGlobal,
-			Local: -1,
+			Kind:  BindUpvalue,
+			Index: uv,
 		}
+
+		return nil
+	}
+
+	r.bindings[expr.NodeId] = Binding{
+		Kind:  BindGlobal,
+		Index: -1,
 	}
 
 	return nil
@@ -291,21 +422,25 @@ func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
 // ================================================================
 
 func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
+	ctx := r.currentCtx()
+
 	r.beginScope()
 
-	prevSlot := r.nextSlot
+	prevSlot := ctx.nextSlot
 
 	for _, s := range stmt.Statements {
 		s.Accept(r)
 	}
 
-	localCnt := r.nextSlot - prevSlot
+	localCnt := ctx.nextSlot - prevSlot
+	closes := r.countCloses(prevSlot)
 
 	r.endScope()
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:  Block,
-		Local: localCnt,
+		Kind:   Block,
+		Slots:  localCnt,
+		Closes: closes,
 	}
 
 	return nil
@@ -332,31 +467,16 @@ func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) any {
 func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	slot, isLocal := r.declare(stmt.Name)
 
-	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Local: slot}
-	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Local: -1}
-	}
-
 	r.define(stmt.Name)
 
 	// 새로운 frame
-	savedLocals := r.locals
-	savedNext := r.nextSlot
-	savedDepth := r.scopeDepth
-	savedLoop := r.loopDepthStack
-
-	r.locals = r.locals[:0]
-	r.nextSlot = 0
-	r.scopeDepth = 0
-	r.loopDepthStack = r.loopDepthStack[:0]
-
+	ctx := r.addFunctionCtx()
 	// 새로운 scope
 	r.beginScope()
 
-	r.declare(&token.Token{
+	r.addLocal(&token.Token{
 		Lexeme: "",
-	}) // this
+	})
 
 	for _, p := range stmt.Params {
 		r.declare(p)
@@ -368,11 +488,13 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	}
 
 	r.endScope()
+	r.fnCtx = r.fnCtx[:len(r.fnCtx)-1]
 
-	r.locals = savedLocals
-	r.nextSlot = savedNext
-	r.scopeDepth = savedDepth
-	r.loopDepthStack = savedLoop
+	if isLocal {
+		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Index: slot, Upvalues: ctx.upvalues}
+	} else {
+		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Index: -1, Upvalues: ctx.upvalues}
+	}
 
 	return nil
 }
@@ -398,6 +520,14 @@ func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
 		stmt.Value.Accept(r)
 	}
 
+	closes := r.countCloses(0)
+
+	r.bindings[stmt.NodeId] = Binding{
+		Kind:   Return,
+		Slots:  0,
+		Closes: closes,
+	}
+
 	return nil
 }
 
@@ -405,9 +535,9 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 	slot, isLocal := r.declare(stmt.Name)
 
 	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Local: slot}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Index: slot}
 	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Local: -1}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Index: -1}
 	}
 
 	if stmt.Initializer != nil {
@@ -420,50 +550,60 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 }
 
 func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
+	ctx := r.currentCtx()
+
 	stmt.Condition.Accept(r)
 
 	if stmt.Post != nil {
 		stmt.Post.Accept(r)
 	}
 
-	r.loopDepthStack = append(r.loopDepthStack, r.nextSlot)
+	ctx.loopDepthStack = append(ctx.loopDepthStack, ctx.nextSlot)
 	stmt.Body.Accept(r)
-	r.loopDepthStack = r.loopDepthStack[:len(r.loopDepthStack)-1]
+	ctx.loopDepthStack = ctx.loopDepthStack[:len(ctx.loopDepthStack)-1]
 
 	return nil
 }
 
 func (r *Resolver) VisitBreakStmt(stmt *ast.Break) any {
-	if len(r.loopDepthStack) == 0 {
+	ctx := r.currentCtx()
+
+	if len(ctx.loopDepthStack) == 0 {
 		r.addError("break statement not within a loop")
 
 		return nil
 	}
 
-	topBaseSlot := r.loopDepthStack[len(r.loopDepthStack)-1]
-	popCount := r.nextSlot - topBaseSlot
+	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
+	popCount := ctx.nextSlot - topBaseSlot
+	closes := r.countCloses(topBaseSlot)
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:  Break,
-		Local: popCount,
+		Kind:   Break,
+		Slots:  popCount,
+		Closes: closes,
 	}
 
 	return nil
 }
 
 func (r *Resolver) VisitContinueStmt(stmt *ast.Continue) any {
-	if len(r.loopDepthStack) == 0 {
+	ctx := r.currentCtx()
+
+	if len(ctx.loopDepthStack) == 0 {
 		r.addError("continue statement not within a loop")
 
 		return nil
 	}
 
-	topBaseSlot := r.loopDepthStack[len(r.loopDepthStack)-1]
-	popCount := r.nextSlot - topBaseSlot
+	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
+	popCount := ctx.nextSlot - topBaseSlot
+	closes := r.countCloses(topBaseSlot)
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:  Continue,
-		Local: popCount,
+		Kind:   Continue,
+		Slots:  popCount,
+		Closes: closes,
 	}
 
 	return nil

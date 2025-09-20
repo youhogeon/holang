@@ -1,36 +1,36 @@
 package runtime
 
-import "container/list"
-
 type ObjectType byte
 
 const (
 	OBJ_FUNCTION ObjectType = iota
+	OBJ_NATIVE_FUNCTION
 	OBJ_CLOSURE
+	OBJ_UPVALUE
 )
 
 type Object interface {
 	ObjectType() ObjectType
 }
 
-type ObjectList struct {
-	objects *list.List
-}
+// type ObjectList struct {
+// 	objects *list.List
+// }
 
-func NewObjectList() *ObjectList {
-	return &ObjectList{
-		objects: list.New(),
-	}
-}
+// func NewObjectList() *ObjectList {
+// 	return &ObjectList{
+// 		objects: list.New(),
+// 	}
+// }
 
-func (ol *ObjectList) Add(obj *Object) *list.Element {
-	return ol.objects.PushBack(obj)
-}
+// func (ol *ObjectList) Add(obj *Object) *list.Element {
+// 	return ol.objects.PushBack(obj)
+// }
 
-func (ol *ObjectList) Remove(e *list.Element) {
-	ol.objects.Remove(e)
-}
+// func (ol *ObjectList) Remove(e *list.Element) {
+// 	ol.objects.Remove(e)
+// }
 
-func (ol *ObjectList) Clear() {
-	ol.objects.Init()
-}
+// func (ol *ObjectList) Clear() {
+// 	ol.objects.Init()
+// }
