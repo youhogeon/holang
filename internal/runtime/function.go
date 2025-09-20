@@ -10,7 +10,12 @@ type FunctionType byte
 const (
 	FUNCTION_TYPE_FUN FunctionType = iota
 	FUNCTION_TYPE_SCRIPT
+	FUNCTION_TYPE_NATIVE
 )
+
+// ================================================================
+// ObjFunction
+// ================================================================
 
 type ObjFunction struct {
 	Name  string
@@ -38,6 +43,10 @@ func (f *ObjFunction) String() string {
 	return "<fun " + f.Name + ">"
 }
 
+func (f *ObjFunction) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + f.String() + `"`), nil
+}
+
 func (f *ObjFunction) Disassemble() {
 	log.Debug("================================================================")
 	log.Debug("Disassemble ObjFunction", log.S("function", f.String()))
@@ -58,4 +67,36 @@ func (f *ObjFunction) Disassemble() {
 	for _, fn := range fns {
 		fn.Disassemble()
 	}
+}
+
+// ================================================================
+// ObjNativeFunction
+// ================================================================
+
+type NativeFunctionType func(args ...bytecode.Value) (bytecode.Value, error)
+
+type ObjNativeFunction struct {
+	Name     string
+	Arity    int
+	Function NativeFunctionType
+}
+
+func NewObjNativeFunction(name string, arity int, function NativeFunctionType) *ObjNativeFunction {
+	return &ObjNativeFunction{
+		Name:     name,
+		Arity:    arity,
+		Function: function,
+	}
+}
+
+func (f *ObjNativeFunction) ObjectType() ObjectType {
+	return OBJ_FUNCTION
+}
+
+func (f *ObjNativeFunction) String() string {
+	return "<native fun " + f.Name + ">"
+}
+
+func (f *ObjNativeFunction) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + f.String() + `"`), nil
 }

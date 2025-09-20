@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"internal/bytecode"
 	"internal/runtime"
 	"internal/util"
 	"internal/util/log"
@@ -367,6 +368,12 @@ func (vm *VM) OP_GET_GLOBAL() InterpretResult {
 		return InterpretResultOK
 	}
 
+	if value, ok := vm.builtin[name.(string)]; ok {
+		vm.push(value)
+
+		return InterpretResultOK
+	}
+
 	log.Error("Undefined variable", log.A("name", name))
 
 	return InterpretResultRuntimeError
@@ -450,13 +457,19 @@ func (vm *VM) OP_CALL() InterpretResult {
 	argCount := int(vm.getOperand())
 	callee := vm.peek(int(argCount))
 
-	fn, ok := callee.(*runtime.ObjFunction)
-	if !ok {
+	switch callee := callee.(type) {
+	case *runtime.ObjFunction:
+		return vm.callFunction(callee, argCount)
+	case *runtime.ObjNativeFunction:
+		return vm.callNativeFunction(callee, argCount)
+	default:
 		log.Error("Can only call functions", log.A("value", callee))
 
 		return InterpretResultRuntimeError
 	}
+}
 
+func (vm *VM) callFunction(fn *runtime.ObjFunction, argCount int) InterpretResult {
 	if argCount != fn.Arity {
 		log.Error("Wrong arguments count", log.I("expected", fn.Arity), log.I("got", argCount), log.A("function", fn.String()))
 
@@ -476,6 +489,31 @@ func (vm *VM) OP_CALL() InterpretResult {
 	}
 
 	vm.callFrames = append(vm.callFrames, frame)
+
+	return InterpretResultOK
+}
+
+func (vm *VM) callNativeFunction(fn *runtime.ObjNativeFunction, argCount int) InterpretResult {
+	if argCount != fn.Arity {
+		log.Error("Wrong arguments count", log.I("expected", fn.Arity), log.I("got", argCount), log.A("function", fn.String()))
+
+		return InterpretResultRuntimeError
+	}
+
+	args := make([]bytecode.Value, argCount)
+	for i := range argCount {
+		args[argCount-i-1] = vm.pop()
+	}
+
+	result, err := fn.Function(args...)
+	if err != nil {
+		log.Error("Runtime error", log.E(err))
+
+		return InterpretResultRuntimeError
+	}
+
+	vm.popN(argCount + 1)
+	vm.push(result)
 
 	return InterpretResultOK
 }

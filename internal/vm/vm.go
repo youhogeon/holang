@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"fmt"
 	"internal/bytecode"
 	"internal/runtime"
 	"internal/util/log"
@@ -22,6 +21,7 @@ type VM struct {
 	stack      []bytecode.Value
 
 	globals map[string]bytecode.Value
+	builtin map[string]bytecode.Value
 	objects *runtime.ObjectList
 }
 
@@ -32,7 +32,16 @@ func NewVM() *VM {
 func (vm *VM) Free() {
 	vm.callFrames = vm.callFrames[:0]
 	vm.globals = make(map[string]bytecode.Value)
+	vm.builtin = make(map[string]bytecode.Value)
 	vm.objects = runtime.NewObjectList()
+
+	vm.initNativeFunctions()
+}
+
+func (vm *VM) initNativeFunctions() {
+	for _, fn := range runtime.NativeFunctions {
+		vm.builtin[fn.Name] = fn
+	}
 }
 
 func (vm *VM) Run(fn *runtime.ObjFunction) InterpretResult {
@@ -177,7 +186,6 @@ func (vm *VM) run() InterpretResult {
 
 		result := fn(vm)
 
-		fmt.Println(vm.stack)
 		log.DebugIfEnabled("VM run completed", func() []log.Field {
 			return []log.Field{
 				log.S("function", frame.fn.Name),

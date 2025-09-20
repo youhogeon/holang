@@ -1,0 +1,170 @@
+package runtime
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"internal/bytecode"
+	"math/rand"
+	"os"
+	"strconv"
+	"time"
+	"unicode/utf8"
+)
+
+var NativeFunctions = []*ObjNativeFunction{
+	NewObjNativeFunction("print", 1, nativePrint),
+	NewObjNativeFunction("input", 1, nativeInput),
+	NewObjNativeFunction("clock", 0, nativeClock),
+
+	NewObjNativeFunction("toString", 1, nativeToString),
+	NewObjNativeFunction("toInt", 1, nativeToInt),
+	NewObjNativeFunction("toFloat", 1, nativeToFloat),
+
+	NewObjNativeFunction("randInt", 1, nativeRandInt),
+	NewObjNativeFunction("sleep", 1, nativeSleep),
+	NewObjNativeFunction("clear", 0, nativeClear),
+
+	NewObjNativeFunction("strLen", 1, nativeStrLen),
+	NewObjNativeFunction("subString", 3, nativeSubString),
+
+	NewObjNativeFunction("getCh", 0, nativeGetCh),
+}
+
+func nativePrint(args ...bytecode.Value) (bytecode.Value, error) {
+	fmt.Println(args[0])
+
+	return nil, nil
+}
+
+func nativeInput(args ...bytecode.Value) (bytecode.Value, error) {
+	var input string
+	fmt.Print(args[0])
+	_, err := fmt.Scanln(&input)
+
+	if err != nil {
+		return nil, errors.New("failed to read input")
+	}
+
+	return input, nil
+}
+
+func nativeClock(args ...bytecode.Value) (bytecode.Value, error) {
+	return int64(time.Now().UnixNano() / 1e6), nil
+}
+
+func nativeToString(args ...bytecode.Value) (bytecode.Value, error) {
+	return fmt.Sprint(args[0]), nil
+}
+
+func nativeToInt(args ...bytecode.Value) (bytecode.Value, error) {
+	return strconv.ParseInt(fmt.Sprint(args[0]), 10, 64)
+}
+
+func nativeToFloat(args ...bytecode.Value) (bytecode.Value, error) {
+	return strconv.ParseFloat(fmt.Sprint(args[0]), 64)
+}
+
+func nativeRandInt(args ...bytecode.Value) (bytecode.Value, error) {
+	var n int64
+	switch v := args[0].(type) {
+	case int64:
+		n = v
+	case float64:
+		n = int64(v)
+	default:
+		// try parsing string rep
+		parsed, err := strconv.ParseInt(fmt.Sprint(args[0]), 10, 64)
+		if err != nil {
+			return nil, errors.New("randInt argument must be a number")
+		}
+		n = parsed
+	}
+	if n <= 0 {
+		return nil, errors.New("randInt argument must be > 0")
+	}
+	return int64(rand.Int63n(n)), nil
+}
+
+func nativeSleep(args ...bytecode.Value) (bytecode.Value, error) {
+	var ms int64
+
+	switch v := args[0].(type) {
+	case int64:
+		ms = v
+	case float64:
+		ms = int64(v)
+	default:
+		parsed, err := strconv.ParseInt(fmt.Sprint(args[0]), 10, 64)
+		if err != nil {
+			return nil, errors.New("sleep argument must be a number (milliseconds)")
+		}
+		ms = parsed
+	}
+	if ms < 0 {
+		return nil, errors.New("sleep argument must be >= 0")
+	}
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+	return nil, nil
+}
+
+func nativeClear(args ...bytecode.Value) (bytecode.Value, error) {
+	fmt.Print("\033[2J\033[H")
+	return nil, nil
+}
+
+func nativeStrLen(args ...bytecode.Value) (bytecode.Value, error) {
+	s := fmt.Sprint(args[0])
+	return int64(utf8.RuneCountInString(s)), nil
+}
+
+func nativeSubString(args ...bytecode.Value) (bytecode.Value, error) {
+	s := fmt.Sprint(args[0])
+	start, ok1 := toInt(args[1])
+	end, ok2 := toInt(args[2])
+	if !ok1 || !ok2 {
+		return nil, errors.New("substring indices must be numbers")
+	}
+	runes := []rune(s)
+	if start < 0 || end < 0 || start > end || int(end) > len(runes) {
+		return nil, errors.New("substring index out of range")
+	}
+	return string(runes[start:end]), nil
+}
+
+func nativeGetCh(args ...bytecode.Value) (bytecode.Value, error) {
+	reader := bufio.NewReader(os.Stdin)
+	r, _, err := reader.ReadRune()
+	if err != nil {
+		return nil, errors.New("failed to read char")
+	}
+	// If user pressed Enter first, try next rune
+	if r == '\n' || r == '\r' {
+		r, _, err = reader.ReadRune()
+		if err != nil {
+			return nil, errors.New("failed to read char")
+		}
+	}
+	return string(r), nil
+}
+
+func toInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case int64:
+		if n < 0 || n > int64(int(n)) { // overflow check
+			return 0, false
+		}
+		return int(n), true
+	case float64:
+		if n < 0 || n > float64(int(n)) { // not whole or overflow
+			return 0, false
+		}
+		return int(n), true
+	default:
+		parsed, err := strconv.ParseInt(fmt.Sprint(v), 10, 64)
+		if err != nil || parsed < 0 || parsed > int64(int(parsed)) {
+			return 0, false
+		}
+		return int(parsed), true
+	}
+}
