@@ -24,11 +24,11 @@ const (
 type Binding struct {
 	Kind BindingKind
 
-	// BindGlobal이면 -1
-	// BindLocal이면 Local 슬롯 인덱스
-	// Block이면 Block 안의 local 개수
-	// Break, Continue이면 pop할 개수
-	Slot int
+	// BindGlobal:		-1
+	// BindLocal:		Local 슬롯 인덱스
+	// Block:		    Block 안의 local 개수
+	// Break, Continue: pop해야 할 local 개수
+	Local int
 }
 
 type BindingResult map[ast.NodeIdType]Binding
@@ -189,13 +189,13 @@ func (r *Resolver) VisitAssignExpr(expr *ast.Assign) any {
 
 	if slot, ok := r.findLocal(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
-			Kind: BindLocal,
-			Slot: slot,
+			Kind:  BindLocal,
+			Local: slot,
 		}
 	} else {
 		r.bindings[expr.NodeId] = Binding{
-			Kind: BindGlobal,
-			Slot: -1,
+			Kind:  BindGlobal,
+			Local: -1,
 		}
 	}
 
@@ -273,13 +273,13 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) any {
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
 	if slot, ok := r.findLocal(expr.Name); ok {
 		r.bindings[expr.NodeId] = Binding{
-			Kind: BindLocal,
-			Slot: slot,
+			Kind:  BindLocal,
+			Local: slot,
 		}
 	} else {
 		r.bindings[expr.NodeId] = Binding{
-			Kind: BindGlobal,
-			Slot: -1,
+			Kind:  BindGlobal,
+			Local: -1,
 		}
 	}
 
@@ -304,8 +304,8 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 	r.endScope()
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind: Block,
-		Slot: localCnt,
+		Kind:  Block,
+		Local: localCnt,
 	}
 
 	return nil
@@ -333,9 +333,9 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	slot, isLocal := r.declare(stmt.Name)
 
 	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Slot: slot}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Local: slot}
 	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Slot: -1}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Local: -1}
 	}
 
 	r.define(stmt.Name)
@@ -405,9 +405,9 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 	slot, isLocal := r.declare(stmt.Name)
 
 	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Slot: slot}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Local: slot}
 	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Slot: -1}
+		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Local: -1}
 	}
 
 	if stmt.Initializer != nil {
@@ -444,8 +444,8 @@ func (r *Resolver) VisitBreakStmt(stmt *ast.Break) any {
 	popCount := r.nextSlot - topBaseSlot
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind: Break,
-		Slot: popCount,
+		Kind:  Break,
+		Local: popCount,
 	}
 
 	return nil
@@ -462,8 +462,8 @@ func (r *Resolver) VisitContinueStmt(stmt *ast.Continue) any {
 	popCount := r.nextSlot - topBaseSlot
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind: Continue,
-		Slot: popCount,
+		Kind:  Continue,
+		Local: popCount,
 	}
 
 	return nil

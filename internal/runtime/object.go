@@ -6,12 +6,8 @@ type ObjectType byte
 
 const (
 	OBJ_FUNCTION ObjectType = iota
+	OBJ_CLOSURE
 )
-
-// type Object struct {
-// 	ObjectType ObjectType
-// 	Value      any
-// }
 
 type Object interface {
 	ObjectType() ObjectType

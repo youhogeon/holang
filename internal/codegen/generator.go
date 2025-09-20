@@ -37,6 +37,7 @@ func NewCodeGenerator(bindings resolver.BindingResult) *CodeGenerator {
 
 func (g *CodeGenerator) Generate(program *ast.Program) (*runtime.ObjFunction, error) {
 	rootFn := runtime.NewObjFunction("<script>", 0, runtime.FUNCTION_TYPE_SCRIPT)
+
 	g.beginFunction(rootFn)
 
 	err := g.genStmts(program.Statements)
@@ -180,7 +181,7 @@ func (g *CodeGenerator) VisitAssignExpr(expr *ast.Assign) any {
 	}
 
 	if binding.Kind == resolver.BindLocal {
-		g.emit(expr.Offset, bytecode.OP_SET_LOCAL, int64(binding.Slot))
+		g.emit(expr.Offset, bytecode.OP_SET_LOCAL, int64(binding.Local))
 
 		return nil
 	}
@@ -350,7 +351,7 @@ func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 	binding := g.bindings[expr.NodeId]
 
 	if binding.Kind == resolver.BindLocal {
-		g.emit(expr.Offset, bytecode.OP_GET_LOCAL, int64(binding.Slot))
+		g.emit(expr.Offset, bytecode.OP_GET_LOCAL, int64(binding.Local))
 
 		return nil
 	}
@@ -370,7 +371,7 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 		return err
 	}
 
-	popCnt := g.bindings[stmt.NodeId].Slot
+	popCnt := g.bindings[stmt.NodeId].Local
 
 	g.emitPop(stmt.Offset, popCnt)
 
@@ -413,7 +414,7 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 
 	// define
 	constant := g.makeConstant(fnObj)
-	g.emit(stmt.Offset, bytecode.OP_CONSTANT, constant)
+	g.emit(stmt.Offset, bytecode.OP_CLOSURE, constant)
 
 	if binding.Kind == resolver.BindLocal {
 		return nil // donothing
@@ -554,7 +555,7 @@ func (g *CodeGenerator) VisitBreakStmt(stmt *ast.Break) any {
 
 	loopCtx := g.loopCtx[len(g.loopCtx)-1]
 
-	popCount := g.bindings[stmt.NodeId].Slot
+	popCount := g.bindings[stmt.NodeId].Local
 	g.emitPop(stmt.Offset, popCount)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
@@ -570,7 +571,7 @@ func (g *CodeGenerator) VisitContinueStmt(stmt *ast.Continue) any {
 
 	loopCtx := g.loopCtx[len(g.loopCtx)-1]
 
-	popCount := g.bindings[stmt.NodeId].Slot
+	popCount := g.bindings[stmt.NodeId].Local
 	g.emitPop(stmt.Offset, popCount)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)

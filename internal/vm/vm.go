@@ -7,13 +7,13 @@ import (
 )
 
 type callFrame struct {
-	fn *runtime.ObjFunction
-	ip int
-	sp int
+	closure *runtime.ObjClosure
+	ip      int
+	sp      int
 }
 
 func (cf *callFrame) getChunk() *bytecode.Chunk {
-	return cf.fn.Chunk
+	return cf.closure.Function.Chunk
 }
 
 type VM struct {
@@ -48,9 +48,9 @@ func (vm *VM) Run(fn *runtime.ObjFunction) InterpretResult {
 	vm.Free()
 
 	frame := &callFrame{
-		fn: fn,
-		ip: 0,
-		sp: 0,
+		closure: runtime.NewObjClosure(fn),
+		ip:      0,
+		sp:      0,
 	}
 	vm.callFrames = append(vm.callFrames, frame)
 
@@ -188,7 +188,7 @@ func (vm *VM) run() InterpretResult {
 
 		log.DebugIfEnabled("VM run completed", func() []log.Field {
 			return []log.Field{
-				log.S("function", frame.fn.Name),
+				log.S("function", frame.closure.Function.Name),
 				log.I("ip", ip),
 				log.A("instruction", instruction),
 				log.A("stack", vm.stack),

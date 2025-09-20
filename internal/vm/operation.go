@@ -57,6 +57,9 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	// FUN
 	(*VM).OP_CALL,
 	(*VM).OP_RETURN,
+	(*VM).OP_CLOSURE,
+	(*VM).OP_GET_UPVALUE,
+	(*VM).OP_SET_UPVALUE,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -460,6 +463,8 @@ func (vm *VM) OP_CALL() InterpretResult {
 	switch callee := callee.(type) {
 	case *runtime.ObjFunction:
 		return vm.callFunction(callee, argCount)
+	case *runtime.ObjClosure:
+		return vm.callFunction(callee.Function, argCount)
 	case *runtime.ObjNativeFunction:
 		return vm.callNativeFunction(callee, argCount)
 	default:
@@ -470,6 +475,14 @@ func (vm *VM) OP_CALL() InterpretResult {
 }
 
 func (vm *VM) callFunction(fn *runtime.ObjFunction, argCount int) InterpretResult {
+	closure := runtime.NewObjClosure(fn)
+
+	return vm.callClosure(closure, argCount)
+}
+
+func (vm *VM) callClosure(closure *runtime.ObjClosure, argCount int) InterpretResult {
+	fn := closure.Function
+
 	if argCount != fn.Arity {
 		log.Error("Wrong arguments count", log.I("expected", fn.Arity), log.I("got", argCount), log.A("function", fn.String()))
 
@@ -483,9 +496,9 @@ func (vm *VM) callFunction(fn *runtime.ObjFunction, argCount int) InterpretResul
 	}
 
 	frame := &callFrame{
-		fn: fn,
-		ip: 0,
-		sp: len(vm.stack) - argCount - 1,
+		closure: closure,
+		ip:      0,
+		sp:      len(vm.stack) - argCount - 1,
 	}
 
 	vm.callFrames = append(vm.callFrames, frame)
@@ -526,6 +539,23 @@ func (vm *VM) OP_RETURN() InterpretResult {
 	vm.stack = vm.stack[:frame.sp]
 	vm.push(result)
 
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_CLOSURE() InterpretResult {
+	constant := vm.getConstant()
+	fn := constant.(*runtime.ObjFunction)
+	closure := runtime.NewObjClosure(fn)
+	vm.push(closure)
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_GET_UPVALUE() InterpretResult {
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_SET_UPVALUE() InterpretResult {
 	return InterpretResultOK
 }
 
