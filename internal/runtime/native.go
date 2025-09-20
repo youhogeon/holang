@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"internal/bytecode"
 	"math/rand"
 	"os"
 	"strconv"
@@ -31,13 +30,13 @@ var NativeFunctions = []*ObjNativeFunction{
 	NewObjNativeFunction("getCh", 0, nativeGetCh),
 }
 
-func nativePrint(args ...bytecode.Value) (bytecode.Value, error) {
+func nativePrint(args ...Value) (Value, error) {
 	fmt.Println(args[0])
 
 	return nil, nil
 }
 
-func nativeInput(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeInput(args ...Value) (Value, error) {
 	var input string
 	fmt.Print(args[0])
 	_, err := fmt.Scanln(&input)
@@ -49,23 +48,23 @@ func nativeInput(args ...bytecode.Value) (bytecode.Value, error) {
 	return input, nil
 }
 
-func nativeClock(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeClock(args ...Value) (Value, error) {
 	return int64(time.Now().UnixNano() / 1e6), nil
 }
 
-func nativeToString(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeToString(args ...Value) (Value, error) {
 	return fmt.Sprint(args[0]), nil
 }
 
-func nativeToInt(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeToInt(args ...Value) (Value, error) {
 	return strconv.ParseInt(fmt.Sprint(args[0]), 10, 64)
 }
 
-func nativeToFloat(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeToFloat(args ...Value) (Value, error) {
 	return strconv.ParseFloat(fmt.Sprint(args[0]), 64)
 }
 
-func nativeRandInt(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeRandInt(args ...Value) (Value, error) {
 	var n int64
 	switch v := args[0].(type) {
 	case int64:
@@ -86,7 +85,7 @@ func nativeRandInt(args ...bytecode.Value) (bytecode.Value, error) {
 	return int64(rand.Int63n(n)), nil
 }
 
-func nativeSleep(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeSleep(args ...Value) (Value, error) {
 	var ms int64
 
 	switch v := args[0].(type) {
@@ -108,17 +107,17 @@ func nativeSleep(args ...bytecode.Value) (bytecode.Value, error) {
 	return nil, nil
 }
 
-func nativeClear(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeClear(args ...Value) (Value, error) {
 	fmt.Print("\033[2J\033[H")
 	return nil, nil
 }
 
-func nativeStrLen(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeStrLen(args ...Value) (Value, error) {
 	s := fmt.Sprint(args[0])
 	return int64(utf8.RuneCountInString(s)), nil
 }
 
-func nativeSubString(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeSubString(args ...Value) (Value, error) {
 	s := fmt.Sprint(args[0])
 	start, ok1 := toInt(args[1])
 	end, ok2 := toInt(args[2])
@@ -132,7 +131,7 @@ func nativeSubString(args ...bytecode.Value) (bytecode.Value, error) {
 	return string(runes[start:end]), nil
 }
 
-func nativeGetCh(args ...bytecode.Value) (bytecode.Value, error) {
+func nativeGetCh(args ...Value) (Value, error) {
 	reader := bufio.NewReader(os.Stdin)
 	r, _, err := reader.ReadRune()
 	if err != nil {

@@ -144,7 +144,7 @@ func (g *CodeGenerator) emitCloseUpvalues(offset token.Offset, n int) {
 	g.emit(offset, bytecode.OP_CLOSE_UPVALUE, int64(n))
 }
 
-func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) {
+func (g *CodeGenerator) emitConstant(offset token.Offset, value runtime.Value) {
 	switch v := value.(type) {
 	case nil:
 		g.emit(offset, bytecode.OP_NIL)
@@ -181,7 +181,7 @@ func (g *CodeGenerator) emitConstant(offset token.Offset, value bytecode.Value) 
 	}
 }
 
-func (g *CodeGenerator) makeConstant(value bytecode.Value) int64 {
+func (g *CodeGenerator) makeConstant(value runtime.Value) int64 {
 	em := g.getEmitter()
 
 	return em.MakeConstant(value)

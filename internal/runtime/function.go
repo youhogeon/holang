@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"internal/bytecode"
 	"internal/util/log"
 )
 
@@ -23,11 +22,11 @@ type ObjFunction struct {
 	Type         FunctionType
 	UpvalueCount int
 
-	Chunk *bytecode.Chunk
+	Chunk *Chunk
 }
 
 func NewObjFunction(name string, arity int, ftype FunctionType) *ObjFunction {
-	chunk := bytecode.NewChunk()
+	chunk := NewChunk()
 
 	return &ObjFunction{
 		Name:  name,
@@ -75,7 +74,7 @@ func (f *ObjFunction) Disassemble() {
 // ObjNativeFunction
 // ================================================================
 
-type NativeFunctionType func(args ...bytecode.Value) (bytecode.Value, error)
+type NativeFunctionType func(args ...Value) (Value, error)
 
 type ObjNativeFunction struct {
 	Name     string

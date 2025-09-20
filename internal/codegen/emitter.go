@@ -3,23 +3,24 @@ package codegen
 import (
 	"encoding/binary"
 	"internal/bytecode"
+	"internal/runtime"
 	"internal/token"
 	"internal/util/log"
 )
 
 type Emitter interface {
 	Emit(offset token.Offset, op bytecode.OpCode, operands ...int64) int
-	MakeConstant(value bytecode.Value) int64
+	MakeConstant(value runtime.Value) int64
 	EmitJump(offset token.Offset, op bytecode.OpCode) int
 	PatchJump(jumpOpLoc int, jumpTo int)
 	Size() int
 }
 
 type ChunkEmitter struct {
-	chunk *bytecode.Chunk
+	chunk *runtime.Chunk
 }
 
-func NewChunkEmitter(chunk *bytecode.Chunk) *ChunkEmitter {
+func NewChunkEmitter(chunk *runtime.Chunk) *ChunkEmitter {
 	return &ChunkEmitter{
 		chunk: chunk,
 	}
@@ -32,7 +33,7 @@ func (e *ChunkEmitter) Emit(offset token.Offset, op bytecode.OpCode, operands ..
 	return at
 }
 
-func (e *ChunkEmitter) MakeConstant(value bytecode.Value) int64 {
+func (e *ChunkEmitter) MakeConstant(value runtime.Value) int64 {
 	return e.chunk.AddConstant(value)
 }
 

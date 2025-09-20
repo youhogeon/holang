@@ -2,7 +2,6 @@ package vm
 
 import (
 	"fmt"
-	"internal/bytecode"
 	"internal/runtime"
 	"internal/util"
 	"internal/util/log"
@@ -513,7 +512,7 @@ func (vm *VM) callNativeFunction(fn *runtime.ObjNativeFunction, argCount int) In
 		return InterpretResultRuntimeError
 	}
 
-	args := make([]bytecode.Value, argCount)
+	args := make([]runtime.Value, argCount)
 	for i := range argCount {
 		args[argCount-i-1] = vm.pop()
 	}

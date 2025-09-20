@@ -12,16 +12,16 @@ type callFrame struct {
 	sp      int
 }
 
-func (cf *callFrame) getChunk() *bytecode.Chunk {
+func (cf *callFrame) getChunk() *runtime.Chunk {
 	return cf.closure.Function.Chunk
 }
 
 type VM struct {
 	callFrames []*callFrame
-	stack      []bytecode.Value
+	stack      []runtime.Value
 
-	globals map[string]bytecode.Value
-	builtin map[string]bytecode.Value
+	globals map[string]runtime.Value
+	builtin map[string]runtime.Value
 
 	openUpvalues []*runtime.ObjUpvalue
 }
@@ -34,8 +34,8 @@ func (vm *VM) Free() {
 	vm.callFrames = vm.callFrames[:0]
 	vm.stack = vm.stack[:0]
 
-	vm.globals = make(map[string]bytecode.Value)
-	vm.builtin = make(map[string]bytecode.Value)
+	vm.globals = make(map[string]runtime.Value)
+	vm.builtin = make(map[string]runtime.Value)
 	vm.openUpvalues = vm.openUpvalues[:0]
 
 	vm.initNativeFunctions()
@@ -108,7 +108,7 @@ func (vm *VM) getOperand() int64 {
 	return v
 }
 
-func (vm *VM) getConstant() bytecode.Value {
+func (vm *VM) getConstant() runtime.Value {
 	frame := vm.currentFrame()
 	chunk := frame.getChunk()
 
@@ -121,33 +121,33 @@ func (vm *VM) getConstant() bytecode.Value {
 // STACK
 // ================================================================
 
-func (vm *VM) push(value bytecode.Value) {
+func (vm *VM) push(value runtime.Value) {
 	vm.stack = append(vm.stack, value)
 }
 
-func (vm *VM) getStack(idx int) bytecode.Value {
+func (vm *VM) getStack(idx int) runtime.Value {
 	frame := vm.currentFrame()
 
 	return vm.stack[frame.sp+idx]
 }
 
-func (vm *VM) setStack(idx int, value bytecode.Value) {
+func (vm *VM) setStack(idx int, value runtime.Value) {
 	frame := vm.currentFrame()
 
 	vm.stack[frame.sp+idx] = value
 }
 
-func (vm *VM) peek(idx int) bytecode.Value {
+func (vm *VM) peek(idx int) runtime.Value {
 	stackTop := len(vm.stack) - 1
 
 	return vm.stack[stackTop-idx]
 }
 
-func (vm *VM) pop() bytecode.Value {
+func (vm *VM) pop() runtime.Value {
 	return vm.popN(1)
 }
 
-func (vm *VM) popN(n int) bytecode.Value {
+func (vm *VM) popN(n int) runtime.Value {
 	stackTop := len(vm.stack) - n
 
 	if stackTop < 0 {

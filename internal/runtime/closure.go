@@ -1,7 +1,5 @@
 package runtime
 
-import "internal/bytecode"
-
 type ObjClosure struct {
 	Function *ObjFunction
 	Upvalues []*ObjUpvalue
@@ -27,10 +25,10 @@ func (c *ObjClosure) MarshalJSON() ([]byte, error) {
 }
 
 type ObjUpvalue struct {
-	Stack *[]bytecode.Value
+	Stack *[]Value
 	Index int
 
-	Closed   bytecode.Value
+	Closed   Value
 	IsClosed bool
 }
 
@@ -38,7 +36,7 @@ func (uv *ObjUpvalue) ObjectType() ObjectType {
 	return OBJ_UPVALUE
 }
 
-func (uv *ObjUpvalue) Get() bytecode.Value {
+func (uv *ObjUpvalue) Get() Value {
 	if uv.IsClosed {
 		return uv.Closed
 	}
@@ -46,7 +44,7 @@ func (uv *ObjUpvalue) Get() bytecode.Value {
 	return (*uv.Stack)[uv.Index]
 }
 
-func (uv *ObjUpvalue) Set(v bytecode.Value) {
+func (uv *ObjUpvalue) Set(v Value) {
 	if uv.IsClosed {
 		uv.Closed = v
 

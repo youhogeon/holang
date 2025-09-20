@@ -1,8 +1,9 @@
-package bytecode
+package runtime
 
 import (
 	"encoding/binary"
 	"fmt"
+	"internal/bytecode"
 	"internal/token"
 	"internal/util/log"
 )
@@ -19,7 +20,7 @@ func NewChunk() *Chunk {
 	return &Chunk{}
 }
 
-func (c *Chunk) AddOperator(offset token.Offset, op OpCode, operands ...int64) {
+func (c *Chunk) AddOperator(offset token.Offset, op bytecode.OpCode, operands ...int64) {
 	c.AddCode(op)
 	c.offsets = append(c.offsets, offset)
 
@@ -42,7 +43,7 @@ func (c *Chunk) AddCode(code ...any) {
 		switch v := v.(type) {
 		case byte:
 			c.code = append(c.code, v)
-		case OpCode:
+		case bytecode.OpCode:
 			c.code = append(c.code, byte(v))
 		case int64:
 			tmp := make([]byte, binary.MaxVarintLen32)
@@ -68,8 +69,8 @@ func (c *Chunk) CountConstants() int {
 	return len(c.constants)
 }
 
-func (c *Chunk) GetOperator(index int) OpCode {
-	return OpCode(c.code[index])
+func (c *Chunk) GetOperator(index int) bytecode.OpCode {
+	return bytecode.OpCode(c.code[index])
 }
 
 func (c *Chunk) GetOperand(index int) (int64, int) {
@@ -92,7 +93,7 @@ func (c *Chunk) OverWrite(at int, value byte) {
 func (c *Chunk) Disassemble() {
 	opIdx := 0
 	for pos := 0; pos < len(c.code); pos++ {
-		operator := OpCode(c.code[pos])
+		operator := bytecode.OpCode(c.code[pos])
 		_pos := pos
 
 		operandsCount := operator.OperandsCount()
@@ -107,11 +108,11 @@ func (c *Chunk) Disassemble() {
 			x, n := c.GetOperand(pos + 1)
 			pos += n
 
-			if operator == OP_CONSTANT {
+			if operator == bytecode.OP_CONSTANT {
 				operands[j] = fmt.Sprintf("%d (value: %v)", x, c.GetConstant(x))
-			} else if operator == OP_DEFINE_GLOBAL || operator == OP_GET_GLOBAL || operator == OP_SET_GLOBAL {
+			} else if operator == bytecode.OP_DEFINE_GLOBAL || operator == bytecode.OP_GET_GLOBAL || operator == bytecode.OP_SET_GLOBAL {
 				operands[j] = fmt.Sprintf("%d (name: %v)", x, c.GetConstant(x))
-			} else if operator == OP_JUMP || operator == OP_JUMP_IF_FALSE {
+			} else if operator == bytecode.OP_JUMP || operator == bytecode.OP_JUMP_IF_FALSE {
 				operands[j] = fmt.Sprintf("%d (target: %d)", x, int64(pos)+x+1)
 			} else {
 				operands[j] = x
