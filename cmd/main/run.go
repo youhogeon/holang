@@ -135,16 +135,6 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	rootFn.Disassemble()
 
 	// ================================================================
-	// Run
-	// ================================================================
-	if vm == nil {
-		vm = vm_.NewVM()
-	}
-	result := vm.Run(rootFn)
-
-	log.Info("VM interpret finished", log.A("result", result))
-
-	// ================================================================
 	// Serialize
 	// ================================================================
 	var bytecode bytes.Buffer
@@ -156,4 +146,14 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	}
 
 	log.Debug("Bytecode serialize complete", log.I("size", bytecode.Len()), log.A("bytecode", bytecode.Bytes()))
+
+	// ================================================================
+	// Run
+	// ================================================================
+	if vm == nil {
+		vm = vm_.NewVM()
+	}
+	result := vm.Run(rootFn)
+
+	log.Info("VM interpret finished", log.A("result", result))
 }

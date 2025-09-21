@@ -14,31 +14,29 @@ import (
 type BindingKind uint8
 
 const (
-	BindGlobal BindingKind = iota
+	BindNone BindingKind = iota
+	BindGlobal
 	BindLocal
 	BindUpvalue
-	Block
-	Break
-	Continue
-	Return
 )
 
-type Binding struct {
-	Kind BindingKind
+type NodeInfo struct {
+	BindingKind BindingKind
 
 	// BindGlobal:		-1
-	// BindLocal:		Index 슬롯 인덱스
+	// BindLocal:		BindingIndex 슬롯 인덱스
 	// BindUpvalue:		Upvalues배열의 인덱스
-	Index int
+	BindingIndex int
 
-	// Block, Break, Continue, Return: 제거할 로컬 수
+	// BindNone: 제거할 로컬 스택 정보 (stack top 부터(역순))
 	// (capture여부)의 배열
 	Pops []bool
 
+	// Function node일 때, upvalues 정보
 	Upvalues []*UpValue
 }
 
-type BindingResult map[ast.NodeIdType]Binding
+type ResolverResult map[ast.NodeIdType]NodeInfo
 
 // ================================================================
 // Resolver
@@ -70,7 +68,7 @@ type functionCtx struct {
 type Resolver struct {
 	fnCtx []*functionCtx
 
-	bindings BindingResult
+	bindings ResolverResult
 	errors   []error
 }
 
@@ -84,7 +82,7 @@ func (r *Resolver) clear() {
 
 	r.fnCtx[0].nextSlot = 0
 
-	r.bindings = make(BindingResult)
+	r.bindings = make(ResolverResult)
 	r.errors = r.errors[:0]
 }
 
@@ -103,7 +101,7 @@ func (r *Resolver) currentCtx() *functionCtx {
 	return r.fnCtx[len(r.fnCtx)-1]
 }
 
-func (r *Resolver) Resolve(program *ast.Program) (BindingResult, []error) {
+func (r *Resolver) Resolve(program *ast.Program) (ResolverResult, []error) {
 	r.clear()
 
 	for _, stmt := range program.Statements {
@@ -175,18 +173,18 @@ func (r *Resolver) define(name *token.Token) {
 
 		if local.Name.Lexeme == name.Lexeme {
 			local.Depth = ctx.scopeDepth
-			ctx.locals[i] = local
+			// ctx.locals[i] = local
 			return
 		}
 	}
 }
-func (r *Resolver) findLocal(name *token.Token) (int, bool) {
+func (r *Resolver) findLocal(name *token.Token) (int, int, bool) {
 	ctx := r.currentCtx()
 
 	return r.findLocalIn(name, ctx)
 }
 
-func (r *Resolver) findLocalIn(name *token.Token, ctx *functionCtx) (int, bool) {
+func (r *Resolver) findLocalIn(name *token.Token, ctx *functionCtx) (int, int, bool) {
 	for i := len(ctx.locals) - 1; i >= 0; i-- {
 		local := ctx.locals[i]
 
@@ -197,13 +195,13 @@ func (r *Resolver) findLocalIn(name *token.Token, ctx *functionCtx) (int, bool) 
 		if local.Depth == -1 {
 			r.addError("Can't read local variable in its own initializer: " + name.Lexeme)
 
-			return -1, false
+			return -1, -1, false
 		}
 
-		return local.Slot, true
+		return local.Slot, i, true
 	}
 
-	return -1, false
+	return -1, -1, false
 }
 
 func (r *Resolver) addLocal(name *token.Token) (slot int) {
@@ -240,13 +238,13 @@ func (r *Resolver) addUpvalue(ctx *functionCtx, name string, index int, isLocal 
 }
 
 func (r *Resolver) resolveUpvalue(name *token.Token) (int, bool) {
-	ctx := r.currentCtx()
+	curIdx := len(r.fnCtx) - 1
 
 	for i := len(r.fnCtx) - 2; i >= 0; i-- {
 		outerCtx := r.fnCtx[i]
 
-		if slot, ok := r.findLocalIn(name, outerCtx); ok {
-			outerCtx.locals[slot].IsCaptured = true
+		if slot, localIdx, ok := r.findLocalIn(name, outerCtx); ok {
+			outerCtx.locals[localIdx].IsCaptured = true
 
 			isLocal := true
 			for j := i + 1; j < len(r.fnCtx); j++ {
@@ -259,7 +257,13 @@ func (r *Resolver) resolveUpvalue(name *token.Token) (int, bool) {
 		}
 
 		if upIndex, ok := outerCtx.upIndexByName[name.Lexeme]; ok {
-			return r.addUpvalue(ctx, name.Lexeme, upIndex, false), true
+			isLocal := false
+			idx := upIndex
+			for j := i + 1; j <= curIdx; j++ {
+				idx = r.addUpvalue(r.fnCtx[j], name.Lexeme, idx, isLocal)
+			}
+
+			return idx, true
 		}
 	}
 
@@ -298,27 +302,27 @@ func (r *Resolver) addError(message string) {
 func (r *Resolver) VisitAssignExpr(expr *ast.Assign) any {
 	expr.Value.Accept(r)
 
-	if slot, ok := r.findLocal(expr.Name); ok {
-		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindLocal,
-			Index: slot,
+	if slot, _, ok := r.findLocal(expr.Name); ok {
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindLocal,
+			BindingIndex: slot,
 		}
 
 		return nil
 	}
 
 	if uv, ok := r.resolveUpvalue(expr.Name); ok {
-		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindUpvalue,
-			Index: uv,
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindUpvalue,
+			BindingIndex: uv,
 		}
 
 		return nil
 	}
 
-	r.bindings[expr.NodeId] = Binding{
-		Kind:  BindGlobal,
-		Index: -1,
+	r.bindings[expr.NodeId] = NodeInfo{
+		BindingKind:  BindGlobal,
+		BindingIndex: -1,
 	}
 
 	return nil
@@ -393,27 +397,27 @@ func (r *Resolver) VisitUnaryExpr(expr *ast.Unary) any {
 }
 
 func (r *Resolver) VisitVariableExpr(expr *ast.Variable) any {
-	if slot, ok := r.findLocal(expr.Name); ok {
-		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindLocal,
-			Index: slot,
+	if slot, _, ok := r.findLocal(expr.Name); ok {
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindLocal,
+			BindingIndex: slot,
 		}
 
 		return nil
 	}
 
 	if uv, ok := r.resolveUpvalue(expr.Name); ok {
-		r.bindings[expr.NodeId] = Binding{
-			Kind:  BindUpvalue,
-			Index: uv,
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindUpvalue,
+			BindingIndex: uv,
 		}
 
 		return nil
 	}
 
-	r.bindings[expr.NodeId] = Binding{
-		Kind:  BindGlobal,
-		Index: -1,
+	r.bindings[expr.NodeId] = NodeInfo{
+		BindingKind:  BindGlobal,
+		BindingIndex: -1,
 	}
 
 	return nil
@@ -438,9 +442,9 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 
 	r.endScope()
 
-	r.bindings[stmt.NodeId] = Binding{
-		Kind: Block,
-		Pops: locals,
+	r.bindings[stmt.NodeId] = NodeInfo{
+		BindingKind: BindNone,
+		Pops:        locals,
 	}
 
 	return nil
@@ -487,9 +491,9 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	r.fnCtx = r.fnCtx[:len(r.fnCtx)-1]
 
 	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Index: slot, Upvalues: ctx.upvalues}
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindLocal, BindingIndex: slot, Upvalues: ctx.upvalues}
 	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Index: -1, Upvalues: ctx.upvalues}
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindGlobal, BindingIndex: -1, Upvalues: ctx.upvalues}
 	}
 
 	return nil
@@ -512,15 +516,12 @@ func (r *Resolver) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
-	if stmt.Value != nil {
-		stmt.Value.Accept(r)
+	if len(r.fnCtx) == 1 { // script 레벨
+		r.addError("Can't return from top-level code.")
 	}
 
-	locals := r.makePopInfo(0)
-
-	r.bindings[stmt.NodeId] = Binding{
-		Kind: Return,
-		Pops: locals,
+	if stmt.Value != nil {
+		stmt.Value.Accept(r)
 	}
 
 	return nil
@@ -530,9 +531,9 @@ func (r *Resolver) VisitVarStmt(stmt *ast.Var) any {
 	slot, isLocal := r.declare(stmt.Name)
 
 	if isLocal {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindLocal, Index: slot}
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindLocal, BindingIndex: slot}
 	} else {
-		r.bindings[stmt.NodeId] = Binding{Kind: BindGlobal, Index: -1}
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindGlobal, BindingIndex: -1}
 	}
 
 	if stmt.Initializer != nil {
@@ -548,13 +549,14 @@ func (r *Resolver) VisitWhileStmt(stmt *ast.While) any {
 	ctx := r.currentCtx()
 
 	stmt.Condition.Accept(r)
+	ctx.loopDepthStack = append(ctx.loopDepthStack, ctx.nextSlot)
+
+	stmt.Body.Accept(r)
 
 	if stmt.Post != nil {
 		stmt.Post.Accept(r)
 	}
 
-	ctx.loopDepthStack = append(ctx.loopDepthStack, ctx.nextSlot)
-	stmt.Body.Accept(r)
 	ctx.loopDepthStack = ctx.loopDepthStack[:len(ctx.loopDepthStack)-1]
 
 	return nil
@@ -572,9 +574,9 @@ func (r *Resolver) VisitBreakStmt(stmt *ast.Break) any {
 	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
 	locals := r.makePopInfo(topBaseSlot)
 
-	r.bindings[stmt.NodeId] = Binding{
-		Kind: Break,
-		Pops: locals,
+	r.bindings[stmt.NodeId] = NodeInfo{
+		BindingKind: BindNone,
+		Pops:        locals,
 	}
 
 	return nil
@@ -592,9 +594,9 @@ func (r *Resolver) VisitContinueStmt(stmt *ast.Continue) any {
 	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
 	locals := r.makePopInfo(topBaseSlot)
 
-	r.bindings[stmt.NodeId] = Binding{
-		Kind: Continue,
-		Pops: locals,
+	r.bindings[stmt.NodeId] = NodeInfo{
+		BindingKind: BindNone,
+		Pops:        locals,
 	}
 
 	return nil

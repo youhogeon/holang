@@ -23,13 +23,13 @@ type functionCtx struct {
 }
 
 type CodeGenerator struct {
-	bindings resolver.BindingResult
+	bindings resolver.ResolverResult
 
 	loopCtx []*loopCtx
 	fnCtx   []*functionCtx
 }
 
-func NewCodeGenerator(bindings resolver.BindingResult) *CodeGenerator {
+func NewCodeGenerator(bindings resolver.ResolverResult) *CodeGenerator {
 	return &CodeGenerator{
 		bindings: bindings,
 	}
@@ -145,13 +145,37 @@ func (g *CodeGenerator) emitCloseUpvalues(offset token.Offset, n int) {
 }
 
 func (g *CodeGenerator) emitPopOrCloseUpvalues(offset token.Offset, isCapturedList []bool) {
-	for _, isCaptured := range isCapturedList {
-		if isCaptured {
-			g.emitCloseUpvalues(offset, 1)
+	if len(isCapturedList) == 0 {
+		return
+	}
+
+	flush := func(close bool, n int) {
+		if n <= 0 {
+			return
+		}
+
+		if close {
+			g.emitCloseUpvalues(offset, n)
 		} else {
-			g.emitPop(offset, 1)
+			g.emitPop(offset, n)
 		}
 	}
+
+	runKind := isCapturedList[0]
+	runLen := 1
+
+	for i := 1; i < len(isCapturedList); i++ {
+		if isCapturedList[i] == runKind {
+			runLen++
+			continue
+		}
+
+		flush(runKind, runLen)
+		runKind = isCapturedList[i]
+		runLen = 1
+	}
+
+	flush(runKind, runLen)
 }
 
 func (g *CodeGenerator) emitConstant(offset token.Offset, value runtime.Value) {
@@ -209,11 +233,11 @@ func (g *CodeGenerator) VisitAssignExpr(expr *ast.Assign) any {
 	}
 
 	op := bytecode.OP_SET_LOCAL
-	v := int64(binding.Index)
+	v := int64(binding.BindingIndex)
 
-	if binding.Kind == resolver.BindUpvalue {
+	if binding.BindingKind == resolver.BindUpvalue {
 		op = bytecode.OP_SET_UPVALUE
-	} else if binding.Kind == resolver.BindGlobal {
+	} else if binding.BindingKind == resolver.BindGlobal {
 		op = bytecode.OP_SET_GLOBAL
 		v = g.makeConstant(expr.Name.Lexeme)
 	}
@@ -382,11 +406,11 @@ func (g *CodeGenerator) VisitVariableExpr(expr *ast.Variable) any {
 	binding := g.bindings[expr.NodeId]
 
 	op := bytecode.OP_GET_LOCAL
-	v := int64(binding.Index)
+	v := int64(binding.BindingIndex)
 
-	if binding.Kind == resolver.BindUpvalue {
+	if binding.BindingKind == resolver.BindUpvalue {
 		op = bytecode.OP_GET_UPVALUE
-	} else if binding.Kind == resolver.BindGlobal {
+	} else if binding.BindingKind == resolver.BindGlobal {
 		op = bytecode.OP_GET_GLOBAL
 		v = g.makeConstant(expr.Name.Lexeme)
 	}
@@ -466,7 +490,7 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 
 	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
-	if binding.Kind == resolver.BindLocal {
+	if binding.BindingKind == resolver.BindLocal {
 		return nil
 	}
 
@@ -539,7 +563,7 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 		}
 	}
 
-	if binding.Kind == resolver.BindLocal {
+	if binding.BindingKind == resolver.BindLocal {
 		// stack에 값이 있으므로, OP_SET_LOCAL 불필요
 		return nil
 	}
