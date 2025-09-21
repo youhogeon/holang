@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"internal/util/log"
 	"os"
 	"strings"
@@ -26,12 +28,7 @@ func main() {
 
 	fileName = filtered[0]
 
-	var outputFileName string
-	if strings.HasSuffix(outputFileName, ".holang") {
-		outputFileName = strings.TrimSuffix(outputFileName, ".holang") + ".hbc"
-	} else {
-		outputFileName = outputFileName + ".hbc"
-	}
+	outputFileName := strings.TrimSuffix(fileName, ".holang") + ".hbc"
 
 	fileBody, err := os.ReadFile(fileName)
 	if err != nil {
@@ -44,6 +41,11 @@ func main() {
 	log.Info("Compile Start", log.S("file", fileName))
 	result := compile(fileBody)
 
+	// comporessed, err := compress(result)
+	// if err != nil {
+	// 	log.Fatal("Compress error", log.E(err))
+	// }
+
 	err = os.WriteFile(outputFileName, result, 0644)
 	if err != nil {
 		log.Fatal("Write file error", log.S("file", outputFileName), log.E(err))
@@ -51,3 +53,26 @@ func main() {
 
 	log.Info("Compile Success", log.S("output", outputFileName))
 }
+
+func compress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	_, err := gz.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// func decompress(data []byte) ([]byte, error) {
+// 	buf := bytes.NewReader(data)
+// 	gz, err := gzip.NewReader(buf)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer gz.Close()
+// 	return io.ReadAll(gz)
+// }

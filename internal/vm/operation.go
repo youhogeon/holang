@@ -546,7 +546,7 @@ func (vm *VM) OP_RETURN() InterpretResult {
 func (vm *VM) OP_CLOSURE() InterpretResult {
 	frame := vm.currentFrame()
 
-	_ = int(vm.getOperand())
+	uvCount := int(vm.getOperand()) // same as fn.UpvalueCount
 	constant := vm.getConstant()
 
 	fn := constant.(*runtime.ObjFunction)
@@ -554,8 +554,7 @@ func (vm *VM) OP_CLOSURE() InterpretResult {
 
 	vm.push(closure)
 
-	uvCount := fn.UpvalueCount
-	for i := 0; i < uvCount; i++ {
+	for i := range uvCount {
 		isLocal := vm.getOperand()
 		index := vm.getOperand()
 
@@ -642,7 +641,7 @@ func (vm *VM) closeUpvaluesFrom(minIdx int) {
 			uv.Close()
 		}
 	}
-	// 닫힌 것들 제거
+
 	write := 0
 	for _, uv := range vm.openUpvalues {
 		if uv.IsClosed {

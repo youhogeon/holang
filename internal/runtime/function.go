@@ -43,8 +43,8 @@ func (f *ObjFunction) String() string {
 func (f *ObjFunction) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + f.String() + `"`), nil
 }
-
 func (f *ObjFunction) Disassemble() {
+
 	log.Debug("================================================================")
 	log.Debug("Disassemble ObjFunction", log.S("function", f.String()))
 	f.Chunk.Disassemble()
