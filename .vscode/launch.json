@@ -13,13 +13,23 @@
       ]
     },
     {
-      "name": "cmd/main with file",
+      "name": "cmd/main with file (debug)",
       "type": "go",
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/main",
       "args": [
         "--debug",
+        "${input:path}",
+      ]
+    },
+    {
+      "name": "cmd/main with file",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main",
+      "args": [
         "${input:path}",
       ]
     },
