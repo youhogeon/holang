@@ -62,6 +62,8 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 
 	// CLASS
 	(*VM).OP_CLASS,
+	(*VM).OP_GET_PROPERTY,
+	(*VM).OP_SET_PROPERTY,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -469,6 +471,8 @@ func (vm *VM) OP_CALL() InterpretResult {
 		return vm.callClosure(callee, argCount)
 	case *runtime.ObjNativeFunction:
 		return vm.callNativeFunction(callee, argCount)
+	case *runtime.ObjClass:
+		return vm.callClass(callee, argCount)
 	default:
 		log.Error("Can only call functions", log.A("value", callee))
 
@@ -529,6 +533,13 @@ func (vm *VM) callNativeFunction(fn *runtime.ObjNativeFunction, argCount int) In
 
 	vm.popN(argCount + 1)
 	vm.push(result)
+
+	return InterpretResultOK
+}
+
+func (vm *VM) callClass(class *runtime.ObjClass, argCount int) InterpretResult {
+	instance := runtime.NewObjInstance(class)
+	vm.setStack(len(vm.stack)-argCount-1, instance)
 
 	return InterpretResultOK
 }
@@ -667,6 +678,44 @@ func (vm *VM) OP_CLASS() InterpretResult {
 
 	class := runtime.NewObjClass(name.(string))
 	vm.push(class)
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_GET_PROPERTY() InterpretResult {
+	_instance := vm.pop()
+
+	instance, ok := _instance.(*runtime.ObjInstance)
+	if !ok {
+		log.Error("Only instances have properties", log.A("value", _instance))
+
+		return InterpretResultRuntimeError
+	}
+
+	fieldName := vm.getConstant()
+	if value, ok := instance.Fields[fieldName.(string)]; ok {
+		vm.push(value)
+
+		return InterpretResultOK
+	}
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_SET_PROPERTY() InterpretResult {
+	value := vm.pop()
+	_instance := vm.pop()
+	vm.push(value)
+
+	instance, ok := _instance.(*runtime.ObjInstance)
+	if !ok {
+		log.Error("Only instances have properties", log.A("value", _instance))
+
+		return InterpretResultRuntimeError
+	}
+
+	fieldName := vm.getConstant()
+	instance.Fields[fieldName.(string)] = value
 
 	return InterpretResultOK
 }

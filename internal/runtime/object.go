@@ -8,10 +8,17 @@ const (
 	OBJ_CLOSURE
 	OBJ_UPVALUE
 	OBJ_CLASS
+	OBJ_INSTANCE
 )
 
 type Object interface {
 	ObjectType() ObjectType
+
+	String() string
+	MarshalJSON() ([]byte, error)
+}
+type SerializableObject interface {
+	Object
 	serializable
 }
 

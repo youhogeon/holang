@@ -58,7 +58,7 @@ func SerializeValue(w io.Writer, v Value) error {
 		if err := writeString(w, val); err != nil {
 			return err
 		}
-	case Object:
+	case SerializableObject:
 		if _, err := w.Write([]byte{byte(VALUE_TYPE_OBJ)}); err != nil {
 			return err
 		}
@@ -119,14 +119,12 @@ func DeserializeValue(data []byte) (any, []byte, error) {
 			return nil, nil, io.EOF
 		}
 
-		var obj Object
+		var obj SerializableObject
 		switch ObjectType(data[0]) {
 		case OBJ_FUNCTION:
 			obj = &ObjFunction{}
 		case OBJ_NATIVE_FUNCTION:
 			obj = &ObjNativeFunction{}
-		case OBJ_CLASS:
-			obj = &ObjClass{}
 		default:
 			return nil, nil, io.ErrUnexpectedEOF
 		}

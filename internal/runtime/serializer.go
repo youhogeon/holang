@@ -6,8 +6,6 @@ import (
 )
 
 type serializable interface {
-	String() string
-	MarshalJSON() ([]byte, error)
 	Serialize(w io.Writer) error
 	Deserialize(data []byte) (any, []byte, error)
 }

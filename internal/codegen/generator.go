@@ -301,6 +301,13 @@ func (g *CodeGenerator) VisitCallExpr(expr *ast.Call) any {
 }
 
 func (g *CodeGenerator) VisitGetExpr(expr *ast.Get) any {
+	if err := expr.Object.Accept(g); err != nil {
+		return err
+	}
+
+	fieldName := g.makeConstant(expr.Name.Lexeme)
+	g.emit(expr.Offset, bytecode.OP_GET_PROPERTY, fieldName)
+
 	return nil
 }
 
@@ -346,6 +353,17 @@ func (g *CodeGenerator) VisitLogicalExpr(expr *ast.Logical) any {
 }
 
 func (g *CodeGenerator) VisitSetExpr(expr *ast.Set) any {
+	if err := expr.Object.Accept(g); err != nil {
+		return err
+	}
+
+	if err := expr.Value.Accept(g); err != nil {
+		return err
+	}
+
+	fieldName := g.makeConstant(expr.Name.Lexeme)
+	g.emit(expr.Offset, bytecode.OP_SET_PROPERTY, fieldName)
+
 	return nil
 }
 
