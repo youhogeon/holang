@@ -60,6 +60,9 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_SET_UPVALUE,
 	(*VM).OP_CLOSE_UPVALUE,
 
+	// CLASS
+	(*VM).OP_CLASS,
+
 	// SPECIAL
 	(*VM).OP_PRINT,
 }
@@ -637,6 +640,7 @@ func (vm *VM) closeUpvalueAt(absIdx int) {
 
 	vm.openUpvalues = vm.openUpvalues[:write]
 }
+
 func (vm *VM) closeUpvaluesFrom(minIdx int) {
 	for _, uv := range vm.openUpvalues {
 		if !uv.IsClosed && uv.Stack == &vm.stack && uv.Index >= minIdx {
@@ -653,6 +657,18 @@ func (vm *VM) closeUpvaluesFrom(minIdx int) {
 		write++
 	}
 	vm.openUpvalues = vm.openUpvalues[:write]
+}
+
+// ================================================================
+// CLASS
+// ================================================================
+func (vm *VM) OP_CLASS() InterpretResult {
+	name := vm.getConstant()
+
+	class := runtime.NewObjClass(name.(string))
+	vm.push(class)
+
+	return InterpretResultOK
 }
 
 // ================================================================

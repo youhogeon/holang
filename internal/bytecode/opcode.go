@@ -60,6 +60,9 @@ const (
 	OP_SET_UPVALUE
 	OP_CLOSE_UPVALUE
 
+	// CLASS
+	OP_CLASS
+
 	// SPECIAL
 	OP_PRINT
 )
@@ -79,6 +82,7 @@ var operandsCount = map[OpCode]int{
 	OP_GET_UPVALUE:   1,
 	OP_SET_UPVALUE:   1,
 	OP_CLOSE_UPVALUE: 1,
+	OP_CLASS:         1,
 }
 
 func (op OpCode) OperandsCount() int {

@@ -7,6 +7,7 @@ const (
 	OBJ_NATIVE_FUNCTION
 	OBJ_CLOSURE
 	OBJ_UPVALUE
+	OBJ_CLASS
 )
 
 type Object interface {

@@ -451,12 +451,22 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 }
 
 func (r *Resolver) VisitClassStmt(stmt *ast.Class) any {
+	slot, isLocal := r.declare(stmt.Name)
+
+	r.define(stmt.Name)
+
 	if stmt.Superclass != nil {
 		stmt.Superclass.Accept(r)
 	}
 
 	for _, method := range stmt.Methods {
 		method.Accept(r)
+	}
+
+	if isLocal {
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindLocal, BindingIndex: slot}
+	} else {
+		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindGlobal, BindingIndex: -1}
 	}
 
 	return nil

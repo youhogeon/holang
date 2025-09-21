@@ -125,6 +125,8 @@ func DeserializeValue(data []byte) (any, []byte, error) {
 			obj = &ObjFunction{}
 		case OBJ_NATIVE_FUNCTION:
 			obj = &ObjNativeFunction{}
+		case OBJ_CLASS:
+			obj = &ObjClass{}
 		default:
 			return nil, nil, io.ErrUnexpectedEOF
 		}

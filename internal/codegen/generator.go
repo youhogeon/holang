@@ -437,6 +437,17 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 }
 
 func (g *CodeGenerator) VisitClassStmt(stmt *ast.Class) any {
+	binding := g.bindings[stmt.NodeId]
+
+	nameConst := g.makeConstant(stmt.Name.Lexeme)
+	g.emit(stmt.Offset, bytecode.OP_CLASS, nameConst)
+
+	if binding.BindingKind == resolver.BindLocal {
+		return nil
+	}
+
+	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
+
 	return nil
 }
 
@@ -488,6 +499,7 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 		}
 	}
 
+	// emit
 	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
 	if binding.BindingKind == resolver.BindLocal {
