@@ -13,10 +13,14 @@ type Chunk struct {
 	code      []byte
 	constants []Value
 	offsets   []token.Offset
+
+	constantCache map[Value]int64
 }
 
 func NewChunk() *Chunk {
-	return &Chunk{}
+	return &Chunk{
+		constantCache: make(map[Value]int64),
+	}
 }
 
 func (c *Chunk) AddOperator(offset token.Offset, op bytecode.OpCode, operands ...int64) {
@@ -55,6 +59,12 @@ func (c *Chunk) AddCode(code ...any) {
 }
 
 func (c *Chunk) AddConstant(value Value) int64 {
+	if idx, ok := c.constantCache[value]; ok {
+		return idx
+	}
+
+	c.constantCache[value] = int64(len(c.constants))
+
 	c.constants = append(c.constants, value)
 
 	return int64(len(c.constants) - 1)
