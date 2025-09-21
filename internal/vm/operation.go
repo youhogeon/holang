@@ -546,13 +546,15 @@ func (vm *VM) OP_RETURN() InterpretResult {
 func (vm *VM) OP_CLOSURE() InterpretResult {
 	frame := vm.currentFrame()
 
-	uvCount := int(vm.getOperand()) // same as fn.UpvalueCount
+	_ = int(vm.getOperand())
 	constant := vm.getConstant()
 
 	fn := constant.(*runtime.ObjFunction)
 	closure := runtime.NewObjClosure(fn)
 
 	vm.push(closure)
+
+	uvCount := fn.UpvalueCount
 
 	for i := range uvCount {
 		isLocal := vm.getOperand()

@@ -28,13 +28,12 @@ type Binding struct {
 
 	// BindGlobal:		-1
 	// BindLocal:		Index 슬롯 인덱스
-	// BindUpvalue:		Upvalue 인덱스
+	// BindUpvalue:		Upvalues배열의 인덱스
 	Index int
 
-	// Block:		    Block 안의 local 개수
-	// Break, Continue: pop해야 할 local 개수
-	Slots  int // POP 해야 할 개수
-	Closes int // CLOSE_UPVALUE 해야 할 개수
+	// Block, Break, Continue, Return: 제거할 로컬 수
+	// (capture여부)의 배열
+	Pops []bool
 
 	Upvalues []*UpValue
 }
@@ -58,11 +57,12 @@ type UpValue struct {
 }
 
 type functionCtx struct {
-	locals        []*Local
+	locals     []*Local
+	nextSlot   int
+	scopeDepth int
+
 	upvalues      []*UpValue
 	upIndexByName map[string]int
-	nextSlot      int
-	scopeDepth    int
 
 	loopDepthStack []int
 }
@@ -82,6 +82,8 @@ func (r *Resolver) clear() {
 	r.fnCtx = r.fnCtx[:0]
 	r.addFunctionCtx()
 
+	r.fnCtx[0].nextSlot = 0
+
 	r.bindings = make(BindingResult)
 	r.errors = r.errors[:0]
 }
@@ -89,6 +91,7 @@ func (r *Resolver) clear() {
 func (r *Resolver) addFunctionCtx() *functionCtx {
 	ctx := &functionCtx{
 		upIndexByName: make(map[string]int),
+		nextSlot:      1, // 0은 callee(this)
 	}
 
 	r.fnCtx = append(r.fnCtx, ctx)
@@ -263,9 +266,10 @@ func (r *Resolver) resolveUpvalue(name *token.Token) (int, bool) {
 	return -1, false
 }
 
-func (r *Resolver) countCloses(fromSlot int) int {
+func (r *Resolver) makePopInfo(fromSlot int) []bool {
 	ctx := r.currentCtx()
-	closes := 0
+
+	localInfo := []bool{}
 
 	for i := len(ctx.locals) - 1; i >= 0; i-- {
 		l := ctx.locals[i]
@@ -274,12 +278,10 @@ func (r *Resolver) countCloses(fromSlot int) int {
 			break
 		}
 
-		if l.IsCaptured {
-			closes++
-		}
+		localInfo = append(localInfo, l.IsCaptured)
 	}
 
-	return closes
+	return localInfo
 }
 
 func (r *Resolver) addError(message string) {
@@ -432,15 +434,13 @@ func (r *Resolver) VisitBlockStmt(stmt *ast.Block) any {
 		s.Accept(r)
 	}
 
-	localCnt := ctx.nextSlot - prevSlot
-	closes := r.countCloses(prevSlot)
+	locals := r.makePopInfo(prevSlot)
 
 	r.endScope()
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:   Block,
-		Slots:  localCnt,
-		Closes: closes,
+		Kind: Block,
+		Pops: locals,
 	}
 
 	return nil
@@ -473,10 +473,6 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	ctx := r.addFunctionCtx()
 	// 새로운 scope
 	r.beginScope()
-
-	r.addLocal(&token.Token{
-		Lexeme: "",
-	})
 
 	for _, p := range stmt.Params {
 		r.declare(p)
@@ -520,12 +516,11 @@ func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
 		stmt.Value.Accept(r)
 	}
 
-	closes := r.countCloses(0)
+	locals := r.makePopInfo(0)
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:   Return,
-		Slots:  0,
-		Closes: closes,
+		Kind: Return,
+		Pops: locals,
 	}
 
 	return nil
@@ -575,13 +570,11 @@ func (r *Resolver) VisitBreakStmt(stmt *ast.Break) any {
 	}
 
 	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
-	popCount := ctx.nextSlot - topBaseSlot
-	closes := r.countCloses(topBaseSlot)
+	locals := r.makePopInfo(topBaseSlot)
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:   Break,
-		Slots:  popCount,
-		Closes: closes,
+		Kind: Break,
+		Pops: locals,
 	}
 
 	return nil
@@ -597,13 +590,11 @@ func (r *Resolver) VisitContinueStmt(stmt *ast.Continue) any {
 	}
 
 	topBaseSlot := ctx.loopDepthStack[len(ctx.loopDepthStack)-1]
-	popCount := ctx.nextSlot - topBaseSlot
-	closes := r.countCloses(topBaseSlot)
+	locals := r.makePopInfo(topBaseSlot)
 
 	r.bindings[stmt.NodeId] = Binding{
-		Kind:   Continue,
-		Slots:  popCount,
-		Closes: closes,
+		Kind: Continue,
+		Pops: locals,
 	}
 
 	return nil

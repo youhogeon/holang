@@ -9,7 +9,6 @@ import (
 	interpreter_ "internal/interpreter"
 	"internal/parser"
 	"internal/resolver"
-	"internal/runtime"
 	"internal/scanner"
 	"internal/util/log"
 	vm_ "internal/vm"
@@ -157,10 +156,4 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	}
 
 	log.Debug("Bytecode serialize complete", log.I("size", bytecode.Len()), log.A("bytecode", bytecode.Bytes()))
-
-	x, y, z := (&runtime.ObjFunction{}).Deserialize(bytecode.Bytes())
-	fmt.Println(x, y, z)
-
-	xx := x.(*runtime.ObjFunction)
-	xx.Disassemble()
 }

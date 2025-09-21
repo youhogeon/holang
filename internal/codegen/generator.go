@@ -144,6 +144,16 @@ func (g *CodeGenerator) emitCloseUpvalues(offset token.Offset, n int) {
 	g.emit(offset, bytecode.OP_CLOSE_UPVALUE, int64(n))
 }
 
+func (g *CodeGenerator) emitPopOrCloseUpvalues(offset token.Offset, isCapturedList []bool) {
+	for _, isCaptured := range isCapturedList {
+		if isCaptured {
+			g.emitCloseUpvalues(offset, 1)
+		} else {
+			g.emitPop(offset, 1)
+		}
+	}
+}
+
 func (g *CodeGenerator) emitConstant(offset token.Offset, value runtime.Value) {
 	switch v := value.(type) {
 	case nil:
@@ -397,8 +407,7 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 		return err
 	}
 
-	g.emitPop(stmt.Offset, b.Slots-b.Closes)
-	g.emitCloseUpvalues(stmt.Offset, b.Closes)
+	g.emitPopOrCloseUpvalues(stmt.Offset, b.Pops)
 
 	return nil
 }
@@ -430,12 +439,10 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	g.beginFunction(fnObj)
 
 	err := g.genStmts(stmt.Body)
-	g.emitCloseUpvalues(stmt.Offset, binding.Closes)
 
 	g.endFunction()
 
 	if err != nil {
-
 		return err
 	}
 
@@ -460,7 +467,6 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
 	if binding.Kind == resolver.BindLocal {
-		// g.emit(stmt.Offset, bytecode.OP_SET_LOCAL, int64(binding.Index))
 		return nil
 	}
 
@@ -605,8 +611,7 @@ func (g *CodeGenerator) VisitBreakStmt(stmt *ast.Break) any {
 
 	b := g.bindings[stmt.NodeId]
 
-	g.emitPop(stmt.Offset, b.Slots-b.Closes)
-	g.emitCloseUpvalues(stmt.Offset, b.Closes)
+	g.emitPopOrCloseUpvalues(stmt.Offset, b.Pops)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
 	loopCtx.breaks = append(loopCtx.breaks, jump)
@@ -623,8 +628,7 @@ func (g *CodeGenerator) VisitContinueStmt(stmt *ast.Continue) any {
 
 	b := g.bindings[stmt.NodeId]
 
-	g.emitPop(stmt.Offset, b.Slots-b.Closes)
-	g.emitCloseUpvalues(stmt.Offset, b.Closes)
+	g.emitPopOrCloseUpvalues(stmt.Offset, b.Pops)
 
 	jump := g.emitJump(stmt.Offset, bytecode.OP_JUMP)
 	loopCtx.continues = append(loopCtx.continues, jump)
