@@ -142,6 +142,8 @@ func (p *Parser) classDecl() (*ast.Class, error) {
 			return nil, err
 		}
 
+		method.IsMethod = true
+
 		methods = append(methods, method)
 	}
 

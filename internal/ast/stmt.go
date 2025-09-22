@@ -66,9 +66,11 @@ func (s *Expression) AcceptString(visitor StmtVisitor) string {
 }
 
 type Function struct {
-	Name   *token.Token
-	Params []*token.Token
-	Body   []Stmt
+	Name     *token.Token
+	Params   []*token.Token
+	Body     []Stmt
+	IsMethod bool
+
 	Offset token.Offset
 	NodeId NodeIdType
 }

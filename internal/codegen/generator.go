@@ -372,6 +372,17 @@ func (g *CodeGenerator) VisitSuperExpr(expr *ast.Super) any {
 }
 
 func (g *CodeGenerator) VisitThisExpr(expr *ast.This) any {
+	binding := g.bindings[expr.NodeId]
+
+	op := bytecode.OP_GET_LOCAL
+	v := int64(binding.BindingIndex)
+
+	if binding.BindingKind == resolver.BindUpvalue {
+		op = bytecode.OP_GET_UPVALUE
+	}
+
+	g.emit(expr.Offset, op, v)
+
 	return nil
 }
 

@@ -66,7 +66,8 @@ type functionCtx struct {
 }
 
 type Resolver struct {
-	fnCtx []*functionCtx
+	fnCtx      []*functionCtx
+	classDepth int
 
 	bindings ResolverResult
 	errors   []error
@@ -80,7 +81,7 @@ func (r *Resolver) clear() {
 	r.fnCtx = r.fnCtx[:0]
 	r.addFunctionCtx()
 
-	r.fnCtx[0].nextSlot = 0
+	r.classDepth = 0
 
 	r.bindings = make(ResolverResult)
 	r.errors = r.errors[:0]
@@ -89,12 +90,22 @@ func (r *Resolver) clear() {
 func (r *Resolver) addFunctionCtx() *functionCtx {
 	ctx := &functionCtx{
 		upIndexByName: make(map[string]int),
-		nextSlot:      1, // 0은 callee(this)
 	}
 
 	r.fnCtx = append(r.fnCtx, ctx)
 
 	return ctx
+}
+
+func (r *Resolver) addThis() {
+	thisToken := &token.Token{
+		TokenType: token.THIS,
+		Lexeme:    "this",
+		Offset:    token.Offset{Line: -1, Index: -1},
+	}
+
+	r.declare(thisToken)
+	r.define(thisToken)
 }
 
 func (r *Resolver) currentCtx() *functionCtx {
@@ -379,6 +390,32 @@ func (r *Resolver) VisitSuperExpr(expr *ast.Super) any {
 }
 
 func (r *Resolver) VisitThisExpr(expr *ast.This) any {
+	if r.classDepth == 0 {
+		r.addError("Can't use 'this' outside of a class.")
+
+		return nil
+	}
+
+	if slot, _, ok := r.findLocal(&token.Token{Lexeme: "this"}); ok {
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindLocal,
+			BindingIndex: slot,
+		}
+
+		return nil
+	}
+
+	if uv, ok := r.resolveUpvalue(&token.Token{Lexeme: "this"}); ok {
+		r.bindings[expr.NodeId] = NodeInfo{
+			BindingKind:  BindUpvalue,
+			BindingIndex: uv,
+		}
+
+		return nil
+	}
+
+	r.addError("Internal error: 'this' not found in local or upvalue.")
+
 	return nil
 }
 
@@ -455,6 +492,8 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) any {
 
 	r.define(stmt.Name)
 
+	r.classDepth++
+
 	if stmt.Superclass != nil {
 		stmt.Superclass.Accept(r)
 	}
@@ -462,6 +501,8 @@ func (r *Resolver) VisitClassStmt(stmt *ast.Class) any {
 	for _, method := range stmt.Methods {
 		method.Accept(r)
 	}
+
+	r.classDepth--
 
 	if isLocal {
 		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindLocal, BindingIndex: slot}
@@ -485,8 +526,13 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 
 	// 새로운 frame
 	ctx := r.addFunctionCtx()
+
 	// 새로운 scope
 	r.beginScope()
+
+	if stmt.IsMethod {
+		r.addThis()
+	}
 
 	for _, p := range stmt.Params {
 		r.declare(p)
