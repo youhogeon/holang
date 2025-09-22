@@ -64,6 +64,7 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_CLASS,
 	(*VM).OP_GET_PROPERTY,
 	(*VM).OP_SET_PROPERTY,
+	(*VM).OP_METHOD,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -473,6 +474,8 @@ func (vm *VM) OP_CALL() InterpretResult {
 		return vm.callNativeFunction(callee, argCount)
 	case *runtime.ObjClass:
 		return vm.callClass(callee, argCount)
+	case *runtime.ObjBoundMethod:
+		return vm.callBoundMethod(callee, argCount)
 	default:
 		log.Error("Can only call functions", log.A("value", callee))
 
@@ -542,6 +545,12 @@ func (vm *VM) callClass(class *runtime.ObjClass, argCount int) InterpretResult {
 	vm.setStack(len(vm.stack)-argCount-1, instance)
 
 	return InterpretResultOK
+}
+
+func (vm *VM) callBoundMethod(class *runtime.ObjBoundMethod, argCount int) InterpretResult {
+	vm.setStack(len(vm.stack)-argCount-1, class.Receiver)
+
+	return vm.callClosure(class.Method, argCount)
 }
 
 func (vm *VM) OP_RETURN() InterpretResult {
@@ -699,6 +708,13 @@ func (vm *VM) OP_GET_PROPERTY() InterpretResult {
 		return InterpretResultOK
 	}
 
+	if method, ok := instance.Class.Methods[fieldName.(string)]; ok {
+		bound := runtime.NewObjBoundMethod(method, instance)
+		vm.push(bound)
+
+		return InterpretResultOK
+	}
+
 	return InterpretResultOK
 }
 
@@ -716,6 +732,16 @@ func (vm *VM) OP_SET_PROPERTY() InterpretResult {
 
 	fieldName := vm.getConstant()
 	instance.Fields[fieldName.(string)] = value
+
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_METHOD() InterpretResult {
+	closure := vm.pop().(*runtime.ObjClosure)
+
+	class := vm.peek(0).(*runtime.ObjClass)
+	methodName := closure.Function.Name
+	class.Methods[methodName] = closure
 
 	return InterpretResultOK
 }

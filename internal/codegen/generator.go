@@ -457,14 +457,27 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 func (g *CodeGenerator) VisitClassStmt(stmt *ast.Class) any {
 	binding := g.bindings[stmt.NodeId]
 
+	// emit clss
 	nameConst := g.makeConstant(stmt.Name.Lexeme)
 	g.emit(stmt.Offset, bytecode.OP_CLASS, nameConst)
 
-	if binding.BindingKind == resolver.BindLocal {
-		return nil
+	if binding.BindingKind == resolver.BindGlobal {
+		g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
+		g.emit(stmt.Offset, bytecode.OP_GET_GLOBAL, nameConst)
+	} else {
+		g.emit(stmt.Offset, bytecode.OP_GET_LOCAL, int64(binding.BindingIndex))
 	}
 
-	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
+	// emit methods
+	for _, method := range stmt.Methods {
+		if err := method.Accept(g); err != nil {
+			return err
+		}
+
+		g.emit(stmt.Offset, bytecode.OP_METHOD)
+	}
+
+	g.emit(stmt.Offset, bytecode.OP_POP)
 
 	return nil
 }
@@ -521,11 +534,9 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
 	if binding.BindingKind == resolver.BindLocal {
-		return nil
+		nameConst := g.makeConstant(stmt.Name.Lexeme)
+		g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
 	}
-
-	nameConst := g.makeConstant(stmt.Name.Lexeme)
-	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
 
 	return nil
 }
@@ -593,13 +604,10 @@ func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {
 		}
 	}
 
-	if binding.BindingKind == resolver.BindLocal {
-		// stack에 값이 있으므로, OP_SET_LOCAL 불필요
-		return nil
+	if binding.BindingKind == resolver.BindGlobal {
+		constant := g.makeConstant(stmt.Name.Lexeme)
+		g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, constant)
 	}
-
-	constant := g.makeConstant(stmt.Name.Lexeme)
-	g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, constant)
 
 	return nil
 }

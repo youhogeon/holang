@@ -1,12 +1,14 @@
 package runtime
 
 type ObjClass struct {
-	Name string
+	Name    string
+	Methods map[string]*ObjClosure
 }
 
 func NewObjClass(name string) *ObjClass {
 	return &ObjClass{
-		Name: name,
+		Name:    name,
+		Methods: make(map[string]*ObjClosure),
 	}
 }
 
