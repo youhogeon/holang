@@ -544,20 +544,28 @@ func (vm *VM) callClass(class *runtime.ObjClass, argCount int) InterpretResult {
 	instance := runtime.NewObjInstance(class)
 	vm.setStack(len(vm.stack)-argCount-1, instance)
 
+	if initializer, ok := class.Methods["init"]; ok {
+		return vm.callClosure(initializer, argCount)
+	} else if argCount != 0 {
+		log.Error("Wrong arguments count", log.I("expected", 0), log.I("got", argCount), log.A("class", class.String()))
+
+		return InterpretResultRuntimeError
+	}
+
 	return InterpretResultOK
 }
 
-func (vm *VM) callBoundMethod(class *runtime.ObjBoundMethod, argCount int) InterpretResult {
-	vm.setStack(len(vm.stack)-argCount-1, class.Receiver)
+func (vm *VM) callBoundMethod(boundMethod *runtime.ObjBoundMethod, argCount int) InterpretResult {
+	vm.setStack(len(vm.stack)-argCount-1, boundMethod.Receiver)
 
-	return vm.callClosure(class.Method, argCount)
+	return vm.callClosure(boundMethod.Method, argCount)
 }
 
 func (vm *VM) OP_RETURN() InterpretResult {
 	result := vm.pop()
 	frame := vm.currentFrame()
 
-	vm.closeUpvaluesFrom(frame.sp + 1)
+	vm.closeUpvaluesFrom(frame.sp)
 
 	vm.callFrames = vm.callFrames[:len(vm.callFrames)-1]
 	vm.stack = vm.stack[:frame.sp]
@@ -715,7 +723,9 @@ func (vm *VM) OP_GET_PROPERTY() InterpretResult {
 		return InterpretResultOK
 	}
 
-	return InterpretResultOK
+	log.Error("Undefined property", log.A("name", fieldName), log.A("instance", instance))
+
+	return InterpretResultRuntimeError
 }
 
 func (vm *VM) OP_SET_PROPERTY() InterpretResult {

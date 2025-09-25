@@ -63,6 +63,8 @@ type functionCtx struct {
 	upIndexByName map[string]int
 
 	loopDepthStack []int
+
+	fn *ast.Function
 }
 
 type Resolver struct {
@@ -79,7 +81,7 @@ func NewResolver() *Resolver {
 
 func (r *Resolver) clear() {
 	r.fnCtx = r.fnCtx[:0]
-	r.addFunctionCtx()
+	r.addFunctionCtx(nil)
 
 	r.classDepth = 0
 
@@ -87,9 +89,10 @@ func (r *Resolver) clear() {
 	r.errors = r.errors[:0]
 }
 
-func (r *Resolver) addFunctionCtx() *functionCtx {
+func (r *Resolver) addFunctionCtx(fn *ast.Function) *functionCtx {
 	ctx := &functionCtx{
 		upIndexByName: make(map[string]int),
+		fn:            fn,
 	}
 
 	r.fnCtx = append(r.fnCtx, ctx)
@@ -97,10 +100,10 @@ func (r *Resolver) addFunctionCtx() *functionCtx {
 	return ctx
 }
 
-func (r *Resolver) addThis() {
+func (r *Resolver) reserveLocal(name string) {
 	thisToken := &token.Token{
-		TokenType: token.THIS,
-		Lexeme:    "this",
+		TokenType: token.VAR,
+		Lexeme:    name,
 		Offset:    token.Offset{Line: -1, Index: -1},
 	}
 
@@ -520,19 +523,23 @@ func (r *Resolver) VisitExpressionStmt(stmt *ast.Expression) any {
 }
 
 func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
-	slot, isLocal := r.declare(stmt.Name)
+	reserveName := ""
+	slot, isLocal := -1, false
 
-	r.define(stmt.Name)
+	if stmt.IsMethod {
+		reserveName = "this"
+	} else {
+		slot, isLocal = r.declare(stmt.Name)
+
+		r.define(stmt.Name)
+	}
 
 	// 새로운 frame
-	ctx := r.addFunctionCtx()
+	ctx := r.addFunctionCtx(stmt)
 
 	// 새로운 scope
 	r.beginScope()
-
-	if stmt.IsMethod {
-		r.addThis()
-	}
+	r.reserveLocal(reserveName)
 
 	for _, p := range stmt.Params {
 		r.declare(p)
@@ -546,10 +553,23 @@ func (r *Resolver) VisitFunctionStmt(stmt *ast.Function) any {
 	r.endScope()
 	r.fnCtx = r.fnCtx[:len(r.fnCtx)-1]
 
-	if isLocal {
-		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindLocal, BindingIndex: slot, Upvalues: ctx.upvalues}
+	if stmt.IsMethod {
+		r.bindings[stmt.NodeId] = NodeInfo{
+			BindingKind: BindNone,
+			Upvalues:    ctx.upvalues,
+		}
+	} else if isLocal {
+		r.bindings[stmt.NodeId] = NodeInfo{
+			BindingKind:  BindLocal,
+			BindingIndex: slot,
+			Upvalues:     ctx.upvalues,
+		}
 	} else {
-		r.bindings[stmt.NodeId] = NodeInfo{BindingKind: BindGlobal, BindingIndex: -1, Upvalues: ctx.upvalues}
+		r.bindings[stmt.NodeId] = NodeInfo{
+			BindingKind:  BindGlobal,
+			BindingIndex: -1,
+			Upvalues:     ctx.upvalues,
+		}
 	}
 
 	return nil
@@ -574,6 +594,11 @@ func (r *Resolver) VisitPrintStmt(stmt *ast.Print) any {
 func (r *Resolver) VisitReturnStmt(stmt *ast.Return) any {
 	if len(r.fnCtx) == 1 { // script 레벨
 		r.addError("Can't return from top-level code.")
+	}
+
+	ctx := r.currentCtx()
+	if ctx.fn != nil && ctx.fn.IsMethod && ctx.fn.Name.Lexeme == "init" && stmt.Value != nil {
+		r.addError("Can't return a value from an initializer.")
 	}
 
 	if stmt.Value != nil {

@@ -61,6 +61,10 @@ func (g *CodeGenerator) genStmts(statements []ast.Stmt) any {
 	return nil
 }
 
+func (g *CodeGenerator) getCurrentFnCtx() *functionCtx {
+	return g.fnCtx[len(g.fnCtx)-1]
+}
+
 func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
 	ch := fn.Chunk
 	em := NewChunkEmitter(ch)
@@ -72,11 +76,10 @@ func (g *CodeGenerator) beginFunction(fn *runtime.ObjFunction) {
 }
 
 func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
-	fc := g.fnCtx[len(g.fnCtx)-1]
+	fc := g.getCurrentFnCtx()
 
 	if fc.fn.Type != runtime.FUNCTION_TYPE_SCRIPT {
-		g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_NIL)
-		g.emit(token.Offset{Line: -1, Index: -1}, bytecode.OP_RETURN)
+		g.emitReturn(token.Offset{Line: -1, Index: -1}, nil)
 	}
 
 	g.fnCtx = g.fnCtx[:len(g.fnCtx)-1]
@@ -89,7 +92,7 @@ func (g *CodeGenerator) endFunction() *runtime.ObjFunction {
 // ================================================================
 
 func (g *CodeGenerator) getEmitter() Emitter {
-	return g.fnCtx[len(g.fnCtx)-1].em
+	return g.getCurrentFnCtx().em
 }
 
 func (g *CodeGenerator) getChunkSize() int {
@@ -219,6 +222,26 @@ func (g *CodeGenerator) makeConstant(value runtime.Value) int64 {
 	em := g.getEmitter()
 
 	return em.MakeConstant(value)
+}
+
+func (g *CodeGenerator) emitReturn(offset token.Offset, value ast.Expr) any {
+	if value != nil {
+		if err := value.Accept(g); err != nil {
+			return err
+		}
+	} else {
+		fc := g.getCurrentFnCtx()
+
+		if fc.fn.Type == runtime.FUNCTION_TYPE_INITIALIZER {
+			g.emit(offset, bytecode.OP_GET_LOCAL, 0)
+		} else {
+			g.emit(offset, bytecode.OP_NIL)
+		}
+	}
+
+	g.emit(offset, bytecode.OP_RETURN)
+
+	return nil
 }
 
 // ================================================================
@@ -506,10 +529,15 @@ func (g *CodeGenerator) VisitExpressionStmt(stmt *ast.Expression) any {
 func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	binding := g.bindings[stmt.NodeId]
 
+	fnType := runtime.FUNCTION_TYPE_FUN
+	if stmt.IsMethod && stmt.Name.Lexeme == "init" {
+		fnType = runtime.FUNCTION_TYPE_INITIALIZER
+	}
+
 	fnObj := runtime.NewObjFunction(
 		stmt.Name.Lexeme,
 		len(stmt.Params),
-		runtime.FUNCTION_TYPE_FUN,
+		fnType,
 	)
 
 	// gen code
@@ -544,7 +572,7 @@ func (g *CodeGenerator) VisitFunctionStmt(stmt *ast.Function) any {
 	// emit
 	g.emit(stmt.Offset, bytecode.OP_CLOSURE, args...)
 
-	if binding.BindingKind == resolver.BindLocal {
+	if binding.BindingKind == resolver.BindGlobal {
 		nameConst := g.makeConstant(stmt.Name.Lexeme)
 		g.emit(stmt.Offset, bytecode.OP_DEFINE_GLOBAL, nameConst)
 	}
@@ -590,17 +618,7 @@ func (g *CodeGenerator) VisitPrintStmt(stmt *ast.Print) any {
 }
 
 func (g *CodeGenerator) VisitReturnStmt(stmt *ast.Return) any {
-	if stmt.Value != nil {
-		if err := stmt.Value.Accept(g); err != nil {
-			return err
-		}
-	} else {
-		g.emit(stmt.Offset, bytecode.OP_NIL)
-	}
-
-	g.emit(stmt.Offset, bytecode.OP_RETURN)
-
-	return nil
+	return g.emitReturn(stmt.Offset, stmt.Value)
 }
 
 func (g *CodeGenerator) VisitVarStmt(stmt *ast.Var) any {

@@ -10,6 +10,7 @@ type ObjFunctionType byte
 const (
 	FUNCTION_TYPE_FUN ObjFunctionType = iota
 	FUNCTION_TYPE_SCRIPT
+	FUNCTION_TYPE_INITIALIZER
 )
 
 type ObjFunction struct {
