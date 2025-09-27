@@ -65,6 +65,7 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_GET_PROPERTY,
 	(*VM).OP_SET_PROPERTY,
 	(*VM).OP_METHOD,
+	(*VM).OP_INVOKE,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -465,6 +466,10 @@ func (vm *VM) OP_CALL() InterpretResult {
 	argCount := int(vm.getOperand())
 	callee := vm.peek(int(argCount))
 
+	return vm.call(callee, argCount)
+}
+
+func (vm *VM) call(callee runtime.Value, argCount int) InterpretResult {
 	switch callee := callee.(type) {
 	case *runtime.ObjFunction:
 		return vm.callFunction(callee, argCount)
@@ -754,6 +759,35 @@ func (vm *VM) OP_METHOD() InterpretResult {
 	class.Methods[methodName] = closure
 
 	return InterpretResultOK
+}
+
+func (vm *VM) OP_INVOKE() InterpretResult {
+	methodName := vm.getConstant().(string)
+	argCount := int(vm.getOperand())
+
+	receiver := vm.peek(argCount)
+	instance, ok := receiver.(*runtime.ObjInstance)
+	if !ok {
+		log.Error("Only instances have methods", log.A("value", receiver), log.S("method", methodName))
+		return InterpretResultRuntimeError
+	}
+
+	if method, ok := instance.Class.Methods[methodName]; ok {
+		bound := runtime.NewObjBoundMethod(method, instance)
+		vm.setStack(len(vm.stack)-argCount-1, bound)
+
+		return vm.callBoundMethod(bound, argCount)
+	}
+
+	if value, ok := instance.Fields[methodName]; ok {
+		vm.setStack(len(vm.stack)-argCount-1, value)
+
+		return vm.call(value, argCount)
+	}
+
+	log.Error("Undefined property", log.A("name", methodName), log.A("instance", instance))
+
+	return InterpretResultRuntimeError
 }
 
 // ================================================================
