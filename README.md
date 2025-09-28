@@ -5,32 +5,32 @@
 * Run from source (.hbc 생성 없이 바로 실행)
     ```sh
     # Windows
-    holangc --run ./sample/tetris
+    ./bin/holangc --run ./sample/tetris
     # Linux
-    holangc --run ./sample/tetris
+    ./bin/holangc --run ./sample/tetris
     # Mac
-    holangc_darwin_amd64 --run ./sample/tetris
-    holangc_darwin_arm64 --run ./sample/tetris
+    ./bin/holangc_darwin_amd64 --run ./sample/tetris
+    ./bin/holangc_darwin_arm64 --run ./sample/tetris
     ```
 * Compile (.hbc 생성)
     ```sh
     # Windows
-    holangc ./sample/tetris
+    ./bin/holangc ./sample/tetris
     # Linux
-    holangc ./sample/tetris
+    ./bin/holangc ./sample/tetris
     # Mac
-    holangc_darwin_amd64 ./sample/tetris
-    holangc_darwin_arm64 ./sample/tetris
+    ./bin/holangc_darwin_amd64 ./sample/tetris
+    ./bin/holangc_darwin_arm64 ./sample/tetris
     ```
 * Run (.hbc 실행)
     ```sh
     # Windows
-    holang ./sample/tetris
+    ./bin/holang ./sample/tetris
     # Linux
-    holang ./sample/tetris
+    ./bin/holang ./sample/tetris
     # Mac
-    holang_darwin_amd64 ./sample/tetris
-    holang_darwin_arm64 ./sample/tetris
+    ./bin/holang_darwin_amd64 ./sample/tetris
+    ./bin/holang_darwin_arm64 ./sample/tetris
     ```
 
 
