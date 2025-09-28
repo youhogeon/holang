@@ -137,6 +137,10 @@ func EnableDebug() { logLevel.SetLevel(zap.DebugLevel) }
 // DisableDebug switches log level back to info.
 func DisableDebug() { logLevel.SetLevel(zap.InfoLevel) }
 
+func B(key string, value bool) Field {
+	return zap.Bool(key, value)
+}
+
 func S(key string, value string) Field {
 	return zap.String(key, value)
 }

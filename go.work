@@ -1,8 +1,8 @@
 go 1.24.0
 
 use (
-	./cmd/compiler
-	./cmd/main
+	./cmd/holang
+	./cmd/holangc
 	./internal/ast
 	./internal/bytecode
 	./internal/codegen
@@ -11,6 +11,7 @@ use (
 	./internal/resolver
 	./internal/runtime
 	./internal/scanner
+	./internal/serialize
 	./internal/token
 	./internal/util
 	./internal/vm

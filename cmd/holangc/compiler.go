@@ -1,20 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"internal/ast"
 	"internal/codegen"
 	"internal/parser"
 	"internal/resolver"
+	"internal/runtime"
 	"internal/scanner"
 	"internal/util/log"
+	"internal/vm"
 )
 
-func compile(source []byte) []byte {
+func compile(source []byte) *runtime.ObjFunction {
 	sourceStr := string(source)
 
-	log.InfoIfEnabled("Run source", func() []log.Field {
+	log.InfoIfEnabled("Source", func() []log.Field {
 		_sourceStr := sourceStr
 
 		if len(source) > 100 {
@@ -83,15 +84,31 @@ func compile(source []byte) []byte {
 
 	rootFn.Disassemble()
 
-	var bytecode bytes.Buffer
-
-	if err := rootFn.Serialize(&bytecode); err != nil {
-		log.Error("Bytecode serialize error", log.E(err))
-
-		return nil
-	}
-
-	log.Debug("Bytecode serialize complete", log.I("size", bytecode.Len()), log.A("bytecode", bytecode.Bytes()))
-
-	return bytecode.Bytes()
+	return rootFn
 }
+
+func run(fn *runtime.ObjFunction) error {
+	machine := vm.NewVM()
+	result := machine.Run(fn)
+
+	log.Info("VM interpret finished", log.A("result", result))
+
+	return nil
+}
+
+// func runLoop() {
+// 	inputScanner := bufio.NewScanner(os.Stdin)
+// 	interpreter := interpreter_.NewInterpreter()
+// 	vm := vm_.NewVM()
+
+// 	log.StdOut("> ")
+// 	for inputScanner.Scan() {
+// 		line := inputScanner.Bytes()
+// 		run(line, interpreter, vm)
+// 		log.StdOut("> ")
+// 	}
+
+// 	if err := inputScanner.Err(); err != nil {
+// 		log.Fatal("Scanner error", log.E(err))
+// 	}
+// }

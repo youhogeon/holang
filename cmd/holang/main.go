@@ -8,7 +8,6 @@ import (
 
 func main() {
 	debug := flag.Bool("debug", false, "enable debug mode")
-	output := *flag.String("o", "", "output file")
 	flag.Parse()
 
 	if *debug {
@@ -16,18 +15,23 @@ func main() {
 	}
 
 	args := flag.Args()
-	if len(args) > 1 {
+	if len(args) != 1 {
 		log.Fatal("Usage: holang [--debug] [file]", log.A("args", os.Args))
 		return
 	}
 
-	if len(args) == 1 {
-		fileName := args[0]
-		log.Info("HOLANG with file", log.S("file", fileName), log.S("out", output))
-		runFile(fileName)
+	fileName := args[0]
+	log.Info("Run HOLANG VM", log.S("file", fileName))
+
+	bytes, err := readFile(fileName)
+	if err != nil {
+		log.Fatal("Read file error", log.S("file", fileName), log.E(err))
 		return
 	}
 
-	log.Info("HOLANG Loop Start", log.S("out", output))
-	runLoop()
+	err = run(bytes)
+	if err != nil {
+		log.Fatal("Run error", log.E(err))
+		return
+	}
 }
