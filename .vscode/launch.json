@@ -2,51 +2,76 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "cmd/main",
+      "name": "Compiler",
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/cmd/main",
-      "console": "integratedTerminal",
-      "args": [
-        "--debug",
-      ]
-    },
-    {
-      "name": "cmd/main with file (debug)",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "${workspaceFolder}/cmd/main",
-      "console": "integratedTerminal",
-      "args": [
-        "--debug",
-        "${input:path}",
-      ]
-    },
-    {
-      "name": "cmd/main with file",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "${workspaceFolder}/cmd/main",
+      "program": "${workspaceFolder}/cmd/holangc",
       "console": "integratedTerminal",
       "args": [
         "${input:path}",
       ]
     },
     {
-      "name": "compile",
+      "name": "Compiler [debug]",
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/cmd/compiler",
+      "program": "${workspaceFolder}/cmd/holangc",
       "console": "integratedTerminal",
       "args": [
         "--debug",
         "${input:path}",
       ]
-    }
+    },
+    {
+      "name": "Compiler [run]",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/holangc",
+      "console": "integratedTerminal",
+      "args": [
+        "--run",
+        "${input:path}",
+      ]
+    },
+    {
+      "name": "Compiler [run/debug]",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/holangc",
+      "console": "integratedTerminal",
+      "args": [
+        "--run",
+        "--debug",
+        "${input:path}",
+      ]
+    },
+    {
+      "name": "VM",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/holang",
+      "console": "integratedTerminal",
+      "args": [
+        "${input:path}",
+      ]
+    },
+    {
+      "name": "VM [debug]",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/holang",
+      "console": "integratedTerminal",
+      "args": [
+        "--debug",
+        "${input:path}",
+      ]
+    },
   ],
   "inputs": [
     {
