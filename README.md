@@ -2,37 +2,38 @@
 22세기를 선도하는 언어
 
 ## 실행
-* Run from source (.hbc 생성 없이 바로 실행)
-    ```sh
-    # Windows
-    ./bin/holangc --run ./sample/tetris
-    # Linux
-    ./bin/holangc --run ./sample/tetris
-    # Mac
-    ./bin/holangc_darwin_amd64 --run ./sample/tetris
-    ./bin/holangc_darwin_arm64 --run ./sample/tetris
-    ```
-* Compile (.hbc 생성)
-    ```sh
-    # Windows
-    ./bin/holangc ./sample/tetris
-    # Linux
-    ./bin/holangc ./sample/tetris
-    # Mac
-    ./bin/holangc_darwin_amd64 ./sample/tetris
-    ./bin/holangc_darwin_arm64 ./sample/tetris
-    ```
-* Run (.hbc 실행)
-    ```sh
-    # Windows
-    ./bin/holang ./sample/tetris
-    # Linux
-    ./bin/holang ./sample/tetris
-    # Mac
-    ./bin/holang_darwin_amd64 ./sample/tetris
-    ./bin/holang_darwin_arm64 ./sample/tetris
-    ```
+### Compile & Run (.hbc 생성 없이 바로 실행)
+```sh
+# Windows
+./bin/holangc --run ./sample/tetris
+# Linux
+./bin/holangc --run ./sample/tetris
+# Mac
+./bin/holangc_darwin_amd64 --run ./sample/tetris
+./bin/holangc_darwin_arm64 --run ./sample/tetris
+```
 
+### Compile (.hbc 생성)
+```sh
+# Windows
+./bin/holangc ./sample/tetris
+# Linux
+./bin/holangc ./sample/tetris
+# Mac
+./bin/holangc_darwin_amd64 ./sample/tetris
+./bin/holangc_darwin_arm64 ./sample/tetris
+```
+
+### Run (.hbc 실행)
+```sh
+# Windows
+./bin/holang ./sample/tetris
+# Linux
+./bin/holang ./sample/tetris
+# Mac
+./bin/holang_darwin_amd64 ./sample/tetris
+./bin/holang_darwin_arm64 ./sample/tetris
+```
 
 ## 예제
 ```holang
