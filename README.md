@@ -2,29 +2,37 @@
 22세기를 선도하는 언어
 
 ## 실행
-* REPL
+* Run from source (.hbc 생성 없이 바로 실행)
     ```sh
     # Windows
-    ./dist/holang
+    /holangc --run ./sample/tetris
     # Mac
-    ./dist/holang_darwin_amd64
-    ./dist/holang_darwin_arm64
+    /holangc_darwin_amd64 --run ./sample/tetris
+    /holangc_darwin_arm64 --run ./sample/tetris
     # Linux
-    ./dist/holang_linux_amd64
+    /holangc_linux_amd64 --run ./sample/tetris
     ```
-* Script
+* Compile (.hbc 생성)
     ```sh
     # Windows
-    ./dist/holang ./sample/tetris
+    /holangc ./sample/tetris
     # Mac
-    ./dist/holang_darwin_amd64 ./sample/tetris
-    ./dist/holang_darwin_arm64 ./sample/tetris
+    /holangc_darwin_amd64 ./sample/tetris
+    /holangc_darwin_arm64 ./sample/tetris
     # Linux
-    ./dist/holang_linux_amd64 ./sample/tetris
+    /holangc_linux_amd64 ./sample/tetris
+    ```
+* Run (.hbc 실행)
+    ```sh
+    # Windows
+    /holang ./sample/tetris
+    # Mac
+    /holang_darwin_amd64 ./sample/tetris
+    /holang_darwin_arm64 ./sample/tetris
+    # Linux
+    /holang_linux_amd64 ./sample/tetris
     ```
 
-### 옵션
-* `--debug`
 
 ## 예제
 ```holang
