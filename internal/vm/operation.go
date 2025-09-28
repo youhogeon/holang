@@ -549,7 +549,7 @@ func (vm *VM) callNativeFunction(fn *runtime.ObjNativeFunction, argCount int) In
 
 func (vm *VM) callClass(class *runtime.ObjClass, argCount int) InterpretResult {
 	instance := runtime.NewObjInstance(class)
-	vm.setStack(len(vm.stack)-argCount-1, instance)
+	vm.stack[len(vm.stack)-argCount-1] = instance
 
 	if initializer, ok := class.Methods["init"]; ok {
 		return vm.callClosure(initializer, argCount)
@@ -563,7 +563,7 @@ func (vm *VM) callClass(class *runtime.ObjClass, argCount int) InterpretResult {
 }
 
 func (vm *VM) callBoundMethod(boundMethod *runtime.ObjBoundMethod, argCount int) InterpretResult {
-	vm.setStack(len(vm.stack)-argCount-1, boundMethod.Receiver)
+	vm.stack[len(vm.stack)-argCount-1] = boundMethod.Receiver
 
 	return vm.callClosure(boundMethod.Method, argCount)
 }
@@ -782,7 +782,7 @@ func (vm *VM) OP_INVOKE() InterpretResult {
 	}
 
 	if value, ok := instance.Fields[methodName]; ok {
-		vm.setStack(len(vm.stack)-argCount-1, value)
+		vm.stack[len(vm.stack)-argCount-1] = value
 
 		return vm.call(value, argCount)
 	}
@@ -837,7 +837,7 @@ func (vm *VM) OP_SUPER() InterpretResult {
 	}
 
 	bound := runtime.NewObjBoundMethod(method, instance)
-	vm.setStack(len(vm.stack)-argCount-1, bound)
+	vm.stack[len(vm.stack)-argCount-1] = bound
 	return vm.callBoundMethod(bound, argCount)
 }
 

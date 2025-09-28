@@ -21,14 +21,15 @@ var NativeFunctions = []*ObjNativeFunction{
 	NewObjNativeFunction("int", 1, nativeToInt),
 	NewObjNativeFunction("float", 1, nativeToFloat),
 
+	NewObjNativeFunction("rand", 0, nativeRand),
 	NewObjNativeFunction("randInt", 1, nativeRandInt),
 	NewObjNativeFunction("sleep", 1, nativeSleep),
 	NewObjNativeFunction("clear", 0, nativeClear),
 
-	NewObjNativeFunction("strLen", 1, nativeStrLen),
-	NewObjNativeFunction("subString", 3, nativeSubString),
+	NewObjNativeFunction("strlen", 1, nativeStrLen),
+	NewObjNativeFunction("substring", 3, nativeSubString),
 
-	NewObjNativeFunction("getCh", 0, nativeGetCh),
+	NewObjNativeFunction("getch", 0, nativeGetCh),
 }
 
 type NativeFunctionType func(args ...Value) (Value, error)
@@ -144,6 +145,10 @@ func nativeToInt(args ...Value) (Value, error) {
 
 func nativeToFloat(args ...Value) (Value, error) {
 	return strconv.ParseFloat(fmt.Sprint(args[0]), 64)
+}
+
+func nativeRand(args ...Value) (Value, error) {
+	return rand.Float64(), nil
 }
 
 func nativeRandInt(args ...Value) (Value, error) {
