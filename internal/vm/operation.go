@@ -800,22 +800,23 @@ func (vm *VM) OP_INVOKE() InterpretResult {
 		return InterpretResultRuntimeError
 	}
 
-	if method, ok := instance.Class.Methods[methodName]; ok {
-		bound := runtime.NewObjBoundMethod(method, instance)
-		vm.setStack(len(vm.stack)-argCount-1, bound)
-
-		return vm.callBoundMethod(bound, argCount)
-	}
+	base := len(vm.stack) - argCount - 1
 
 	if value, ok := instance.Fields[methodName]; ok {
-		vm.stack[len(vm.stack)-argCount-1] = value
-
+		vm.stack[base] = value
 		return vm.call(value, argCount)
+	}
+
+	if method := findMethodInClassChain(instance.Class, methodName); method != nil {
+		bound := runtime.NewObjBoundMethod(method, instance)
+		vm.stack[base] = bound
+		return vm.callBoundMethod(bound, argCount)
 	}
 
 	log.Error("Undefined property", log.A("name", methodName), log.A("instance", instance))
 
 	return InterpretResultRuntimeError
+
 }
 
 func (vm *VM) OP_INHERIT() InterpretResult {

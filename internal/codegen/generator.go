@@ -311,22 +311,22 @@ func (g *CodeGenerator) VisitBinaryExpr(expr *ast.Binary) any {
 
 func (g *CodeGenerator) VisitCallExpr(expr *ast.Call) any {
 	// Method 호출 (OP_INVOKE 사용해 최적화하기 위한 분기)
-	// if getExpr, ok := expr.Callee.(*ast.Get); ok {
-	// 	if err := getExpr.Object.Accept(g); err != nil {
-	// 		return err
-	// 	}
+	if getExpr, ok := expr.Callee.(*ast.Get); ok {
+		if err := getExpr.Object.Accept(g); err != nil {
+			return err
+		}
 
-	// 	for _, arg := range expr.Arguments {
-	// 		if err := arg.Accept(g); err != nil {
-	// 			return err
-	// 		}
-	// 	}
+		for _, arg := range expr.Arguments {
+			if err := arg.Accept(g); err != nil {
+				return err
+			}
+		}
 
-	// 	methodConst := g.makeConstant(getExpr.Name.Lexeme)
-	// 	g.emit(expr.Offset, bytecode.OP_INVOKE, methodConst, int64(len(expr.Arguments)))
+		methodConst := g.makeConstant(getExpr.Name.Lexeme)
+		g.emit(expr.Offset, bytecode.OP_INVOKE, methodConst, int64(len(expr.Arguments)))
 
-	// 	return nil
-	// }
+		return nil
+	}
 
 	if superExpr, ok := expr.Callee.(*ast.Super); ok {
 		g.emit(superExpr.Offset, bytecode.OP_GET_LOCAL, 0)
