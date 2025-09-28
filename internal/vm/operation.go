@@ -541,7 +541,7 @@ func (vm *VM) callNativeFunction(fn *runtime.ObjNativeFunction, argCount int) In
 		return InterpretResultRuntimeError
 	}
 
-	vm.popN(argCount + 1)
+	vm.pop()
 	vm.push(result)
 
 	return InterpretResultOK
