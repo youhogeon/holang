@@ -11,6 +11,10 @@ import (
 
 const EXT_BYTES = ".hbc"
 
+var SUPPORTS_VERSION = []string{
+	"2.0.0",
+}
+
 func readFile(fileName string) ([]byte, error) {
 	if strings.HasSuffix(fileName, EXT_BYTES) {
 		fileBody, err := os.ReadFile(fileName)
@@ -36,7 +40,7 @@ func readFile(fileName string) ([]byte, error) {
 }
 
 func run(bytes []byte) error {
-	program, err := serialize.Deserialize(bytes)
+	program, err := serialize.Deserialize(bytes, SUPPORTS_VERSION)
 	if err != nil {
 		return fmt.Errorf("failed to deserialize: %w", err)
 	}
