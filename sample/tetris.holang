@@ -1,0 +1,244 @@
+// ===== 렌더링 =====
+var CELL_ON  = "██"; var CELL_OFF = "  ";
+var HBAR = "━━"; var VBAR = "┃";
+var TL="┏"; var TR="┓"; var BL="┗"; var BR="┛";
+
+fun ansiReset() { return "\u001b[0m"; }
+fun ansiCyan() { return "\u001b[36m"; }          // I
+fun ansiYellow() { return "\u001b[33m"; }        // O
+fun ansiMagenta() { return "\u001b[35m"; }       // T
+fun ansiGreen() { return "\u001b[32m"; }         // S
+fun ansiRed() { return "\u001b[31m"; }           // Z
+fun ansiBlue() { return "\u001b[34m"; }          // J
+fun ansiOrange256() { return "\u001b[38;5;208m"; } // L
+fun ansiGrey() { return "\u001b[90m"; }
+
+fun colorForType(t) {
+  if (t == 0) return ansiCyan();
+  if (t == 1) return ansiYellow();
+  if (t == 2) return ansiMagenta();
+  if (t == 3) return ansiGreen();
+  if (t == 4) return ansiRed();
+  if (t == 5) return ansiBlue();
+  return ansiOrange256();
+}
+fun paintCell(t) { return colorForType(t) + CELL_ON + ansiReset(); }
+
+// ===== 보드 =====
+class Board {
+  init(w, h) {
+    this.w = w; this.h = h;
+    var n = w * h; var s = ""; var i = 0;
+    while (i < n) { s = s + " "; i = i + 1; }
+    this.cells = s; // ' ' 또는 '0'..'6'
+  }
+  idx(x,y){ return y*this.w + x; }
+  inBounds(x,y){ return x>=0 and x<this.w and y>=0 and y<this.h; }
+  get(x,y){
+    if (!this.inBounds(x,y)) return "?";
+    var i=this.idx(x,y); return substring(this.cells,i,i+1);
+  }
+  set(x,y,ch){
+    var i=this.idx(x,y);
+    var pre=substring(this.cells,0,i);
+    var post=substring(this.cells,i+1,strlen(this.cells));
+    this.cells = pre + ch + post;
+  }
+  clearLines(){
+    var w=this.w; var y=this.h-1; var removed=0;
+    while (y>=0){
+      var full=true; var x=0;
+      while (x<w){ if (this.get(x,y)==" ") { full=false; break; } x=x+1; }
+      if (full){
+        var start=y*w; var end=start+w;
+        var pre=substring(this.cells,0,start);
+        var post=substring(this.cells,end,strlen(this.cells));
+        var empty=""; var i=0; while(i<w){ empty=empty+" "; i=i+1; }
+        this.cells = empty + pre + post;
+        removed=removed+1;
+      } else { y=y-1; }
+    }
+    return removed;
+  }
+  drawWith(piece){
+    clear();
+    var t=TL; var i=0; while(i<this.w){ t=t+HBAR; i=i+1; } t=t+TR;
+    print(ansiGrey()+t+ansiReset());
+    var y=0;
+    while(y<this.h){
+      var line = ansiGrey()+VBAR+ansiReset();
+      var x=0;
+      while(x<this.w){
+        var out=CELL_OFF;
+        if (piece != nil and piece.covers(x,y)) out = paintCell(piece.t);
+        else {
+          var ch=this.get(x,y);
+          if (ch != " ") out = paintCell(int(ch));
+        }
+        line = line + out;
+        x=x+1;
+      }
+      line = line + ansiGrey()+VBAR+ansiReset();
+      print(line);
+      y=y+1;
+    }
+    var b=BL; i=0; while(i<this.w){ b=b+HBAR; i=i+1; } b=b+BR;
+    print(ansiGrey()+b+ansiReset());
+  }
+}
+
+// ===== 회전 유틸(CW) =====
+fun rotX(x, y, r, N) {
+  var k=0;
+  while (k<r) { var nx = y; var ny = N - 1 - x; x = nx; y = ny; k = k + 1; }
+  return x;
+}
+fun rotY(x, y, r, N) {
+  var k=0;
+  while (k<r) { var nx = y; var ny = N - 1 - x; x = nx; y = ny; k = k + 1; }
+  return y;
+}
+
+// ===== 피스 =====
+// 타입: 0:I(4x4), 1:O(2x2), 2:T, 3:S, 4:Z, 5:J, 6:L (3x3)
+class Piece {
+  init(t, r, x, y) { this.t=t; this.r=r; this.x=x; this.y=y; }
+
+  boxSize() { if (this.t == 0) return 4; if (this.t == 1) return 2; return 3; }
+
+  baseX(i) {
+    var t=this.t;
+    if (t==0) { if (i==0) return 0; if (i==1) return 1; if (i==2) return 2; return 3; }              // I: (0,1)-(3,1)
+    if (t==1) { if (i==0) return 0; if (i==1) return 1; if (i==2) return 0; return 1; }              // O: (0,0)(1,0)(0,1)(1,1)
+    if (t==2) { if (i==0) return 0; if (i==1) return 1; if (i==2) return 2; return 1; }              // T: (0,0)(1,0)(2,0)(1,1)
+    if (t==3) { if (i==0) return 1; if (i==1) return 2; if (i==2) return 0; return 1; }              // S: (1,0)(2,0)(0,1)(1,1)
+    if (t==4) { if (i==0) return 0; if (i==1) return 1; if (i==2) return 1; return 2; }              // Z: (0,0)(1,0)(1,1)(2,1)
+    if (t==5) { if (i==0) return 0; if (i==1) return 0; if (i==2) return 1; return 2; }              // J: (0,0)(0,1)(1,1)(2,1)
+    /* t==6 */ if (i==0) return 2; if (i==1) return 0; if (i==2) return 1; return 2;                 // L: (2,0)(0,1)(1,1)(2,1)
+  }
+  baseY(i) {
+    var t=this.t;
+    if (t==0) { if (i==0) return 1; if (i==1) return 1; if (i==2) return 1; return 1; }              // I: y=1
+    if (t==1) { if (i==0) return 0; if (i==1) return 0; if (i==2) return 1; return 1; }              // O
+    if (t==2) { if (i==0) return 0; if (i==1) return 0; if (i==2) return 0; return 1; }              // T
+    if (t==3) { if (i==0) return 0; if (i==1) return 0; if (i==2) return 1; return 1; }              // S
+    if (t==4) { if (i==0) return 0; if (i==1) return 0; if (i==2) return 1; return 1; }              // Z
+    if (t==5) { if (i==0) return 0; if (i==1) return 1; if (i==2) return 1; return 1; }              // J
+    /* t==6 */ if (i==0) return 0; if (i==1) return 1; if (i==2) return 1; return 1;                 // L
+  }
+
+  localX(i) {
+    var N = this.boxSize();
+    var bx = this.baseX(i);
+    var by = this.baseY(i);
+    return rotX(bx, by, this.r % 4, N);
+  }
+  localY(i) {
+    var N = this.boxSize();
+    var bx = this.baseX(i);
+    var by = this.baseY(i);
+    return rotY(bx, by, this.r % 4, N);
+  }
+
+  covers(px,py){
+    var i=0;
+    while(i<4){
+      var gx=this.x + this.localX(i);
+      var gy=this.y + this.localY(i);
+      if (gx==px and gy==py) return true;
+      i=i+1;
+    }
+    return false;
+  }
+}
+
+// ===== 유틸 =====
+fun canPlace(b,p,nx,ny,nr){
+  var i=0;
+  while(i<4){
+    var N = (p.t==0) ? 4 : ((p.t==1)?2:3);
+    var bx = p.baseX(i);
+    var by = p.baseY(i);
+    var gx = nx + rotX(bx, by, nr % 4, N);
+    var gy = ny + rotY(bx, by, nr % 4, N);
+    if (!b.inBounds(gx,gy)) return false;
+    if (b.get(gx,gy) != " ") return false;
+    i=i+1;
+  }
+  return true;
+}
+fun lockPiece(b,p){
+  var tstr=str(p.t); var i=0;
+  while(i<4){
+    var gx=p.x + p.localX(i);
+    var gy=p.y + p.localY(i);
+    b.set(gx,gy,tstr);
+    i=i+1;
+  }
+}
+fun spawnPiece(b){
+  var t=randInt(7);
+  var p=Piece(t,0,3,0);
+  if (t==0) p.y = -1; // I만 보정
+  return p;
+}
+fun hardDrop(b,p){ while (canPlace(b,p,p.x,p.y+1,p.r)) { p.y=p.y+1; } }
+
+// ===== 메인 루프 =====
+fun game(){
+  var W=10; var H=20;
+  var board=Board(W,H);
+  var score=0;
+  var piece=spawnPiece(board);
+  if (!canPlace(board,piece,piece.x,piece.y,piece.r)) { return; }
+
+  while(true){
+    board.drawWith(piece);
+    print("Score: " + str(score));
+    print("[a/d]←→ [s]↓ [w]↻(CW) [space]DROP [q]quit");
+
+    var c=getch();
+    var k=c; if (strlen(k)>1) k=substring(k,0,1);
+    if (k=="A") k="a"; if (k=="D") k="d"; if (k=="S") k="s"; if (k=="W") k="w"; if (k=="Q") k="q";
+
+    if (k=="q"){ board.drawWith(nil); print("GG. 점수: " + str(score)); return; }
+
+    if (k=="a"){
+      if (canPlace(board,piece,piece.x-1,piece.y,piece.r)) piece.x=piece.x-1;
+    } else if (k=="d"){
+      if (canPlace(board,piece,piece.x+1,piece.y,piece.r)) piece.x=piece.x+1;
+    } else if (k=="w"){
+      var nr = (piece.r + 3) % 4;
+      if (canPlace(board,piece,piece.x,piece.y,nr)) { piece.r=nr; }
+      else {
+        if (canPlace(board,piece,piece.x-1,piece.y,nr)) { piece.x=piece.x-1; piece.r=nr; }
+        else if (canPlace(board,piece,piece.x+1,piece.y,nr)) { piece.x=piece.x+1; piece.r=nr; }
+      }
+    } else if (k==" "){
+      hardDrop(board,piece);
+      lockPiece(board,piece);
+      var cleared=board.clearLines();
+      score=score+cleared;
+      piece=spawnPiece(board);
+      if (!canPlace(board,piece,piece.x,piece.y,piece.r)){
+        board.drawWith(nil); print("Game Over. 점수: " + str(score)); return;
+      }
+    } else if (k=="s"){
+      if (canPlace(board,piece,piece.x,piece.y+1,piece.r)) {
+        piece.y=piece.y+1;
+      } else {
+        lockPiece(board,piece);
+        var c2=board.clearLines();
+        score=score+c2;
+        piece=spawnPiece(board);
+        if (!canPlace(board,piece,piece.x,piece.y,piece.r)){
+          board.drawWith(nil); print("Game Over. 점수: " + str(score)); return;
+        }
+      }
+    }
+    sleep(1);
+  }
+}
+
+clear();
+game();

@@ -15,12 +15,12 @@
 * Script
     ```sh
     # Windows
-    ./dist/holang ./sample/game
+    ./dist/holang ./sample/tetris
     # Mac
-    ./dist/holang_darwin_amd64 ./sample/game
-    ./dist/holang_darwin_arm64 ./sample/game
+    ./dist/holang_darwin_amd64 ./sample/tetris
+    ./dist/holang_darwin_arm64 ./sample/tetris
     # Linux
-    ./dist/holang_linux_amd64 ./sample/game
+    ./dist/holang_linux_amd64 ./sample/tetris
     ```
 
 ### 옵션
