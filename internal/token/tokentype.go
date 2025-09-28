@@ -19,6 +19,7 @@ const (
 	STAR
 	QUESTION
 	COLON
+	PERCENT
 
 	// One or two character tokens.
 	BANG
@@ -77,6 +78,7 @@ var tokenNames = map[TokenType]string{
 	//10
 	QUESTION:      "QUESTION",
 	COLON:         "COLON",
+	PERCENT:       "PERCENT",
 	STAR:          "STAR",
 	BANG:          "BANG",
 	BANG_EQUAL:    "BANG_EQUAL",
@@ -84,8 +86,8 @@ var tokenNames = map[TokenType]string{
 	EQUAL_EQUAL:   "EQUAL_EQUAL",
 	GREATER:       "GREATER",
 	GREATER_EQUAL: "GREATER_EQUAL",
-	LESS:          "LESS",
 	//20
+	LESS:        "LESS",
 	LESS_EQUAL:  "LESS_EQUAL",
 	IDENTIFIER:  "IDENTIFIER",
 	STRING:      "STRING",
@@ -95,8 +97,8 @@ var tokenNames = map[TokenType]string{
 	CLASS:       "CLASS",
 	ELSE:        "ELSE",
 	FALSE:       "FALSE",
-	FUN:         "FUN",
 	//30
+	FUN:    "FUN",
 	FOR:    "FOR",
 	IF:     "IF",
 	NIL:    "NIL",
@@ -106,8 +108,8 @@ var tokenNames = map[TokenType]string{
 	SUPER:  "SUPER",
 	THIS:   "THIS",
 	TRUE:   "TRUE",
-	VAR:    "VAR",
 	//40
+	VAR:           "VAR",
 	WHILE:         "WHILE",
 	BREAK:         "BREAK",
 	CONTINUE:      "CONTINUE",

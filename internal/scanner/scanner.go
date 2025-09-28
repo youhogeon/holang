@@ -72,6 +72,8 @@ func (s *Scanner) scanToken() error {
 		s.addToken(token.SEMICOLON, nil)
 	case '?':
 		s.addToken(token.QUESTION, nil)
+	case '%':
+		s.addToken(token.PERCENT, nil)
 	case '/':
 		if s.advanceIfMatch('/') {
 			for s.peek() != '\n' && !s.isAtEnd() {

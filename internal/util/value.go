@@ -15,7 +15,6 @@ func IsTruthy(value any) bool {
 func IsEqual(a any, b any) bool {
 	if a == nil || b == nil {
 		return a == b
-
 	}
 
 	switch ax := a.(type) {
@@ -40,7 +39,7 @@ func IsEqual(a any, b any) bool {
 
 func IsNotEqual(a any, b any) bool {
 	if a == nil || b == nil {
-		return a == b
+		return a != b
 	}
 
 	switch ax := a.(type) {

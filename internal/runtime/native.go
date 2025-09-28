@@ -1,7 +1,8 @@
 package runtime
 
 import (
-	"bufio"
+	"golang.org/x/term"
+
 	"errors"
 	"fmt"
 	"io"
@@ -219,19 +220,17 @@ func nativeSubString(args ...Value) (Value, error) {
 }
 
 func nativeGetCh(args ...Value) (Value, error) {
-	reader := bufio.NewReader(os.Stdin)
-	r, _, err := reader.ReadRune()
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
 	if err != nil {
-		return nil, errors.New("failed to read char")
+		return nil, err
 	}
-	// If user pressed Enter first, try next rune
-	if r == '\n' || r == '\r' {
-		r, _, err = reader.ReadRune()
-		if err != nil {
-			return nil, errors.New("failed to read char")
-		}
-	}
-	return string(r), nil
+	defer term.Restore(fd, oldState)
+
+	var b [1]byte
+	os.Stdin.Read(b[:])
+	return string(b[:]), nil
+
 }
 
 func toInt(v any) (int, bool) {

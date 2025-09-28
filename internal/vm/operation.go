@@ -30,6 +30,7 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_SUBTRACT,
 	(*VM).OP_MULTIPLY,
 	(*VM).OP_DIVIDE,
+	(*VM).OP_MODULO,
 	(*VM).OP_EQUAL,
 	(*VM).OP_NOT_EQUAL,
 	(*VM).OP_GREATER,
@@ -263,6 +264,31 @@ func (vm *VM) OP_DIVIDE() InterpretResult {
 			return a / b
 		},
 	)
+}
+
+func (vm *VM) OP_MODULO() InterpretResult {
+	b := vm.pop()
+	a := vm.pop()
+
+	switch aVal := a.(type) {
+	case int64:
+		switch bVal := b.(type) {
+		case int64:
+			if bVal == 0 {
+				log.Error("Division by zero", log.A("a", a), log.A("b", b))
+
+				return InterpretResultRuntimeError
+			}
+
+			vm.push(aVal % bVal)
+
+			return InterpretResultOK
+		}
+	}
+
+	log.Error("Operand must be an integer", log.A("a", a), log.A("b", b))
+
+	return InterpretResultRuntimeError
 }
 
 func (vm *VM) OP_EQUAL() InterpretResult {
@@ -815,7 +841,6 @@ func (vm *VM) OP_INHERIT() InterpretResult {
 		}
 	}
 
-	// push subclass back
 	vm.push(subclass)
 	return InterpretResultOK
 }

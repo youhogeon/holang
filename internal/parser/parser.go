@@ -784,7 +784,7 @@ func (p *Parser) factor() (ast.Expr, error) {
 		return nil, err
 	}
 
-	for p.match(token.SLASH, token.STAR) {
+	for p.match(token.SLASH, token.STAR, token.PERCENT) {
 		operator := p.previous()
 		right, err := p.unary()
 
