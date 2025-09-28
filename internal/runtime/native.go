@@ -17,9 +17,9 @@ var NativeFunctions = []*ObjNativeFunction{
 	NewObjNativeFunction("input", 1, nativeInput),
 	NewObjNativeFunction("clock", 0, nativeClock),
 
-	NewObjNativeFunction("toString", 1, nativeToString),
-	NewObjNativeFunction("toInt", 1, nativeToInt),
-	NewObjNativeFunction("toFloat", 1, nativeToFloat),
+	NewObjNativeFunction("str", 1, nativeToString),
+	NewObjNativeFunction("int", 1, nativeToInt),
+	NewObjNativeFunction("float", 1, nativeToFloat),
 
 	NewObjNativeFunction("randInt", 1, nativeRandInt),
 	NewObjNativeFunction("sleep", 1, nativeSleep),
