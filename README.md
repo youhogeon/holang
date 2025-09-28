@@ -35,6 +35,8 @@
 ./bin/holang_darwin_arm64 ./sample/tetris
 ```
 
+<img width="934" height="533" alt="image" src="https://github.com/user-attachments/assets/e5960321-6204-4b85-b634-250df7939e7e" />
+
 ## 예제
 ```holang
 class GuGuDan {
