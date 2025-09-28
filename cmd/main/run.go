@@ -89,24 +89,6 @@ func run(source []byte, interpreter *interpreter_.Interpreter, vm *vm_.VM) {
 	}
 
 	// ================================================================
-	// Resolve + Interpret (HoLang1)
-	// ================================================================
-	if interpreter == nil {
-		interpreter = interpreter_.NewInterpreter()
-	}
-
-	r_ := interpreter_.NewResolver(interpreter)
-	err := r_.Resolve(program)
-
-	log.Debug("Resolve complete", log.E(err))
-
-	if err == nil {
-		err = interpreter.Interpret(program)
-
-		log.Debug("Interpret complete", log.E(err))
-	}
-
-	// ================================================================
 	// Resolve
 	// ================================================================
 	r := resolver.NewResolver()
