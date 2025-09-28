@@ -13,7 +13,7 @@ func NewObjInstance(class *ObjClass) *ObjInstance {
 }
 
 func (i *ObjInstance) ObjectType() ObjectType {
-	return OBJ_NATIVE_FUNCTION
+	return OBJ_INSTANCE
 }
 
 func (i *ObjInstance) String() string {

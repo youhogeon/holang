@@ -326,6 +326,21 @@ func (g *CodeGenerator) VisitCallExpr(expr *ast.Call) any {
 		return nil
 	}
 
+	if superExpr, ok := expr.Callee.(*ast.Super); ok {
+		g.emit(superExpr.Offset, bytecode.OP_GET_LOCAL, 0)
+
+		for _, arg := range expr.Arguments {
+			if err := arg.Accept(g); err != nil {
+				return err
+			}
+		}
+
+		methodConst := g.makeConstant(superExpr.Method.Lexeme)
+		g.emit(superExpr.Offset, bytecode.OP_SUPER, methodConst, int64(len(expr.Arguments)))
+
+		return nil
+	}
+
 	// 일반 호출 (함수/클로저/클래스 등)
 	if err := expr.Callee.Accept(g); err != nil {
 		return err
@@ -509,9 +524,14 @@ func (g *CodeGenerator) VisitBlockStmt(stmt *ast.Block) any {
 
 func (g *CodeGenerator) VisitClassStmt(stmt *ast.Class) any {
 	binding := g.bindings[stmt.NodeId]
-
-	// emit clss
 	nameConst := g.makeConstant(stmt.Name.Lexeme)
+
+	if stmt.Superclass != nil {
+		if err := stmt.Superclass.Accept(g); err != nil {
+			return err
+		}
+	}
+
 	g.emit(stmt.Offset, bytecode.OP_CLASS, nameConst)
 
 	if binding.BindingKind == resolver.BindGlobal {
@@ -521,7 +541,11 @@ func (g *CodeGenerator) VisitClassStmt(stmt *ast.Class) any {
 		g.emit(stmt.Offset, bytecode.OP_GET_LOCAL, int64(binding.BindingIndex))
 	}
 
-	// emit methods
+	if stmt.Superclass != nil {
+		g.emit(stmt.Offset, bytecode.OP_INHERIT)
+	}
+
+	// gen methods
 	for _, method := range stmt.Methods {
 		if err := method.Accept(g); err != nil {
 			return err

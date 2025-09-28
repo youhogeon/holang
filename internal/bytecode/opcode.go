@@ -66,6 +66,8 @@ const (
 	OP_SET_PROPERTY
 	OP_METHOD
 	OP_INVOKE
+	OP_INHERIT
+	OP_SUPER
 
 	// SPECIAL
 	OP_PRINT
@@ -90,6 +92,7 @@ var operandsCount = map[OpCode]int{
 	OP_GET_PROPERTY:  1,
 	OP_SET_PROPERTY:  1,
 	OP_INVOKE:        2,
+	OP_SUPER:         2,
 }
 
 func (op OpCode) OperandsCount() int {

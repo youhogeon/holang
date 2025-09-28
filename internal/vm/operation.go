@@ -66,6 +66,8 @@ var OP_FUNCS []func(vm *VM) InterpretResult = []func(vm *VM) InterpretResult{
 	(*VM).OP_SET_PROPERTY,
 	(*VM).OP_METHOD,
 	(*VM).OP_INVOKE,
+	(*VM).OP_INHERIT,
+	(*VM).OP_SUPER,
 
 	// SPECIAL
 	(*VM).OP_PRINT,
@@ -788,6 +790,64 @@ func (vm *VM) OP_INVOKE() InterpretResult {
 	log.Error("Undefined property", log.A("name", methodName), log.A("instance", instance))
 
 	return InterpretResultRuntimeError
+}
+
+func (vm *VM) OP_INHERIT() InterpretResult {
+	subclassValue := vm.pop()
+	superclassValue := vm.pop()
+
+	superclass, ok := superclassValue.(*runtime.ObjClass)
+	if !ok {
+		log.Error("Superclass must be a class", log.A("value", superclassValue))
+		return InterpretResultRuntimeError
+	}
+
+	subclass, ok := subclassValue.(*runtime.ObjClass)
+	if !ok {
+		log.Error("Subclass must be a class", log.A("value", subclassValue))
+		return InterpretResultRuntimeError
+	}
+
+	subclass.Super = superclass
+	for name, method := range superclass.Methods {
+		if _, exists := subclass.Methods[name]; !exists {
+			subclass.Methods[name] = method
+		}
+	}
+
+	// push subclass back
+	vm.push(subclass)
+	return InterpretResultOK
+}
+
+func (vm *VM) OP_SUPER() InterpretResult {
+	methodName := vm.getConstant().(string)
+	argCount := int(vm.getOperand())
+
+	receiver := vm.peek(argCount)
+	instance, ok := receiver.(*runtime.ObjInstance)
+	if !ok {
+		log.Error("'super' receiver must be an instance", log.A("value", receiver))
+		return InterpretResultRuntimeError
+	}
+	method := findMethodInClassChain(instance.Class.Super, methodName)
+	if method == nil {
+		log.Error("Undefined superclass method", log.S("method", methodName))
+		return InterpretResultRuntimeError
+	}
+
+	bound := runtime.NewObjBoundMethod(method, instance)
+	vm.setStack(len(vm.stack)-argCount-1, bound)
+	return vm.callBoundMethod(bound, argCount)
+}
+
+func findMethodInClassChain(cls *runtime.ObjClass, name string) *runtime.ObjClosure {
+	for c := cls; c != nil; c = c.Super {
+		if m, ok := c.Methods[name]; ok {
+			return m
+		}
+	}
+	return nil
 }
 
 // ================================================================

@@ -3,17 +3,19 @@ package runtime
 type ObjClass struct {
 	Name    string
 	Methods map[string]*ObjClosure
+	Super   *ObjClass
 }
 
 func NewObjClass(name string) *ObjClass {
 	return &ObjClass{
 		Name:    name,
 		Methods: make(map[string]*ObjClosure),
+		Super:   nil,
 	}
 }
 
 func (c *ObjClass) ObjectType() ObjectType {
-	return OBJ_NATIVE_FUNCTION
+	return OBJ_CLASS
 }
 
 func (c *ObjClass) String() string {
